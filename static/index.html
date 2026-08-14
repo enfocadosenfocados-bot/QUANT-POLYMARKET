@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUANT POLYMARKET</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0e1a;
+            --bg-card: #111827;
+            --bg-hover: #1f2937;
+            --border: #1f2937;
+            --text: #e5e7eb;
+            --text-muted: #6b7280;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --purple: #a855f7;
+            --orange: #f97316;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online { background: var(--green); }
+        .status-dot.offline { background: var(--red); animation: none; }
+        .status-dot.warning { background: var(--yellow); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .container {
+            padding: 20px 30px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+        @media (max-width: 1200px) {
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 10px; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 5px;
+        }
+
+        .card-value.green { color: var(--green); }
+        .card-value.red { color: var(--red); }
+        .card-value.yellow { color: var(--yellow); }
+        .card-value.purple { color: var(--purple); }
+        .card-value.blue { color: var(--accent); }
+
+        .card-delta {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: var(--bg-hover);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:hover td {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-buy { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+        .badge-sell { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+        .badge-both { background: rgba(168, 85, 247, 0.15); color: var(--purple); }
+        .badge-bundle { background: rgba(249, 115, 22, 0.15); color: var(--orange); }
+        .badge-high { background: rgba(239, 68, 68, 0.2); color: var(--red); }
+        .badge-medium { background: rgba(234, 179, 8, 0.2); color: var(--yellow); }
+        .badge-low { background: rgba(34, 197, 94, 0.2); color: var(--green); }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-hover);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .confidence-high { background: var(--green); }
+        .confidence-med { background: var(--yellow); }
+        .confidence-low { background: var(--red); }
+
+        .signal-row {
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .signal-row:hover {
+            transform: translateX(4px);
+        }
+
+        .market-question {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .price-tag {
+            font-family: 'SF Mono', monospace;
+            font-weight: 600;
+        }
+
+        .spread-positive { color: var(--green); }
+        .spread-negative { color: var(--red); }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .tab:hover { background: var(--bg-hover); color: var(--text); }
+        .tab.active { background: var(--accent); color: white; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .log-container {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .log-time { color: var(--text-muted); }
+        .log-info { color: var(--accent); }
+        .log-signal { color: var(--green); }
+        .log-error { color: var(--red); }
+
+        .latency-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .latency-good { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+        .latency-mid { background: rgba(234, 179, 8, 0.15); color: var(--yellow); }
+        .latency-bad { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        .strategy-card {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+            border: 1px solid rgba(59,130,246,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .strategy-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .strategy-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .strategy-meta {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .strategy-meta span {
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .signals-strategy-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        .signals-strategy-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .signals-strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .signals-strategy-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .signals-strategy-subtitle {
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .signals-strategy-count {
+            white-space: nowrap;
+            background: rgba(59,130,246,0.15);
+            color: var(--accent);
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .signals-strategy-panel .table-container {
+            border: none;
+            border-radius: 0;
+            max-height: 360px;
+            overflow: auto;
+        }
+
+        .signals-strategy-panel table {
+            min-width: 1050px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🔮 QUANT POLYMARKET</h1>
+            <div class="subtitle">Sistema de inteligencia de mercado en tiempo real</div>
+        </div>
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot online" id="ws-status-dot"></div>
+                <span id="ws-status">WS Conectado</span>
+            </div>
+            <div class="status-item">
+                <span id="latency-display" class="latency-indicator latency-good">-- ms</span>
+            </div>
+            <div class="status-item">
+                <span id="markets-count">0</span> mercados
+            </div>
+            <div class="status-item">
+                <span id="signals-count">0</span> señales
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Stats Cards -->
+        <div class="grid grid-4">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Mercados Activos</span>
+                </div>
+                <div class="card-value blue" id="stat-markets">0</div>
+                <div class="card-delta text-muted">En seguimiento en tiempo real</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Señales Activas</span>
+                </div>
+                <div class="card-value yellow" id="stat-signals">0</div>
+                <div class="card-delta text-muted">Oportunidades detectadas</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Arbitrajes Bundle</span>
+                </div>
+                <div class="card-value green" id="stat-arb">0</div>
+                <div class="card-delta text-muted">Ineficiencias YES+NO ≠ $1</div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Latencia API</span>
+                </div>
+                <div class="card-value purple" id="stat-latency">--</div>
+                <div class="card-delta text-muted">ms última respuesta</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="section">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('signals')">🚨 Señales en Tiempo Real</button>
+                <button class="tab" onclick="switchTab('arbitrage')">⚡ Arbitraje Bundle</button>
+                <button class="tab" onclick="switchTab('markets')">📊 Todos los Mercados</button>
+                <button class="tab" onclick="switchTab('strategies')">🧠 Estrategias</button>
+                <button class="tab" onclick="switchTab('logs')">📋 Logs</button>
+            </div>
+
+            <!-- Tab: Señales -->
+            <div id="tab-signals" class="tab-content active">
+                <div class="signals-strategy-grid" id="signals-strategy-grid">
+                    <div class="signals-strategy-panel" data-strategy-code="MM">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">A: Market Making</div>
+                                <div class="signals-strategy-subtitle">Señales generadas por spreads bid-ask amplios.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-MM">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-MM">
+                                    <tr><td colspan="9" class="empty-state">Esperando señales de Market Making...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="BA">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">B: Bundle Arbitrage</div>
+                                <div class="signals-strategy-subtitle">Señales cuando YES + NO no suma exactamente $1.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-BA">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-BA">
+                                    <tr><td colspan="9" class="empty-state">Esperando señales de Bundle Arbitrage...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="MR">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">C: Mean Reversion</div>
+                                <div class="signals-strategy-subtitle">Señales por sobre-reacción y regreso a media.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-MR">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-MR">
+                                    <tr><td colspan="9" class="empty-state">Esperando señales de Mean Reversion...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="FLB">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">D: Favorite-Longshot Bias</div>
+                                <div class="signals-strategy-subtitle">Señales por sesgo de favoritos y longshots.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-FLB">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-FLB">
+                                    <tr><td colspan="9" class="empty-state">Esperando señales de Favorite-Longshot Bias...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="WT">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">F: Whale Tracking</div>
+                                <div class="signals-strategy-subtitle">Señales siguiendo trades grandes de wallets públicas.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-WT">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-WT">
+                                    <tr><td colspan="9" class="empty-state">Esperando señales de Whale Tracking...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Arbitrage -->
+            <div id="tab-arbitrage" class="tab-content">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mercado</th>
+                                <th>Tipo</th>
+                                <th>Suma Bundle</th>
+                                <th>Profit/Bundle</th>
+                                <th>YES</th>
+                                <th>NO</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="arbitrage-table">
+                            <tr><td colspan="7" class="empty-state">Escaneando oportunidades de arbitraje...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Mercados -->
+            <div id="tab-markets" class="tab-content">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mercado</th>
+                                <th>Categoría</th>
+                                <th>Precio YES</th>
+                                <th>Precio NO</th>
+                                <th>Spread</th>
+                                <th>Volumen 24h</th>
+                                <th>Liquidez</th>
+                                <th>Señales</th>
+                            </tr>
+                        </thead>
+                        <tbody id="markets-table">
+                            <tr><td colspan="8" class="empty-state">Cargando mercados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Estrategias -->
+            <div id="tab-strategies" class="tab-content">
+                <div class="grid grid-2">
+                    <div class="strategy-card">
+                        <div class="strategy-name">A: Market Making</div>
+                        <div class="strategy-desc">
+                            Coloca órdenes de compra y venta simultáneas cuando el spread bid-ask es amplio (>50 bps). 
+                            Captura la diferencia como profit. Requiere capital moderado y operación continua.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">B: Bundle Arbitrage</div>
+                        <div class="strategy-desc">
+                            Aprovecha cuando YES + NO no suma exactamente $1. Compra ambos por &lt;$1 y redime por $1, 
+                            o vende ambos por &gt;$1. Riesgo casi nulo, requiere velocidad de ejecución.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">C: Mean Reversion</div>
+                        <div class="strategy-desc">
+                            Opera en mercados de alta liquidez (política/macro) que sobre-reaccionan a noticias. 
+                            Usa z-score local cuando hay historial suficiente y fallback con cambios 1d/1w de Gamma al arrancar.
+                        </div>
+                        <div class="strategy-meta" id="mr-meta"><span>Calculando diagnóstico...</span></div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">D: Favorite-Longshot Bias</div>
+                        <div class="strategy-desc">
+                            Explotación de sesgo psicológico: favoritos (85-95¢) suelen estar infravalorados, 
+                            longshots (5-15¢) sobrevalorados. Basado en estudios académicos de mercados de apuestas.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">E: Latencia Datos Externos</div>
+                        <div class="strategy-desc">
+                            Aprovecha la ventana de segundos entre publicación de datos oficiales (NOAA, ESPN, FRED) 
+                            y ajuste del precio en Polymarket. Requiere feeds de datos externos en tiempo real.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">F: Whale Tracking</div>
+                        <div class="strategy-desc">
+                            Sigue trades recientes de wallets públicas y valida si la wallet tiene posición grande + win-rate mínimo usando Data API pública.
+                            Riesgo: el win-rate es aproximado con posiciones públicas, no una auditoría completa.
+                        </div>
+                        <div class="strategy-meta" id="wt-meta"><span>Esperando primer poll de whales...</span></div>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 15px;">
+                    <div class="card-header"><span class="card-title">Diagnóstico de Estrategias</span></div>
+                    <div class="strategy-desc" id="strategy-diagnostics">
+                        Si una estrategia no muestra señales, aquí verás si faltan mercados que pasen filtros, historial local o wallets que cumplan win-rate/tamaño.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Logs -->
+            <div id="tab-logs" class="tab-content">
+                <div class="log-container" id="log-container">
+                    <div class="log-entry"><span class="log-time">[INIT]</span> Sistema iniciado. Conectando a Polymarket...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        let allMarkets = [];
+        let allSignals = [];
+        let logEntries = [];
+
+        function addLog(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('es-ES');
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+
+            logEntries.push({time, message, type});
+            if (logEntries.length > 200) logEntries.shift();
+        }
+
+        ws.onopen = () => {
+            addLog('WebSocket conectado al scanner', 'info');
+            document.getElementById('ws-status-dot').className = 'status-dot online';
+            document.getElementById('ws-status').textContent = 'WS Conectado';
+        };
+
+        ws.onclose = () => {
+            addLog('WebSocket desconectado', 'error');
+            document.getElementById('ws-status-dot').className = 'status-dot offline';
+            document.getElementById('ws-status').textContent = 'WS Desconectado';
+        };
+
+        ws.onerror = (e) => {
+            addLog('Error en WebSocket', 'error');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'init') {
+                allMarkets = data.markets || [];
+                allSignals = data.signals || [];
+                updateStats(data.stats);
+                renderMarkets();
+                renderSignals();
+                addLog(`Inicializado: ${allMarkets.length} mercados, ${allSignals.length} señales`, 'info');
+            }
+            else if (data.type === 'update') {
+                updateStats(data.stats);
+                document.getElementById('markets-count').textContent = data.markets_count || 0;
+                document.getElementById('signals-count').textContent = data.active_signals || 0;
+            }
+            else if (data.type === 'market_update') {
+                const updatedMarkets = data.markets || [];
+                updatedMarkets.forEach(um => {
+                    const idx = allMarkets.findIndex(m => m.market_id === um.market_id);
+                    if (idx >= 0) {
+                        allMarkets[idx] = um;
+                    } else {
+                        allMarkets.push(um);
+                    }
+                });
+                if (document.getElementById('tab-markets').classList.contains('active')) {
+                    renderMarkets();
+                }
+            }
+        };
+
+        function updateStats(stats) {
+            if (stats) {
+                document.getElementById('stat-markets').textContent = stats.markets_tracked || 0;
+                document.getElementById('stat-signals').textContent = stats.active_signals ?? stats.signals_generated ?? 0;
+                document.getElementById('stat-latency').textContent = (stats.api_latency_ms || '--') + ' ms';
+
+                if (stats.strategy_diagnostics) {
+                    renderStrategyDiagnostics(stats.strategy_diagnostics);
+                }
+
+                const lat = stats.api_latency_ms || 0;
+                const latEl = document.getElementById('latency-display');
+                if (lat < 500) { latEl.className = 'latency-indicator latency-good'; latEl.textContent = `${lat}ms`; }
+                else if (lat < 1500) { latEl.className = 'latency-indicator latency-mid'; latEl.textContent = `${lat}ms`; }
+                else { latEl.className = 'latency-indicator latency-bad'; latEl.textContent = `${lat}ms`; }
+            }
+        }
+
+        function renderStrategyDiagnostics(d) {
+            if (!d) return;
+            const by = d.signals_by_strategy || {};
+            const mr = d.mean_reversion || {};
+            const wt = d.whale_tracking || {};
+
+            const mrMeta = document.getElementById('mr-meta');
+            if (mrMeta) {
+                mrMeta.innerHTML = `
+                    <span>Señales MR: ${by.MR || 0}</span>
+                    <span>Líquidos+volumen: ${mr.markets_liquid_and_volume || 0}</span>
+                    <span>Historial listo: ${mr.markets_history_ready || 0}</span>
+                    <span>Candidatos Gamma: ${mr.gamma_change_candidates || 0}</span>`;
+            }
+
+            const wtMeta = document.getElementById('wt-meta');
+            if (wtMeta) {
+                wtMeta.innerHTML = `
+                    <span>Señales WT: ${by.WT || 0}</span>
+                    <span>Candidatos smart-money: ${wt.smart_money_candidates ?? wt.recent_big_trades_on_tracked_markets ?? 0}</span>
+                    <span>Pasan win-rate: ${wt.smart_money_passing_winrate ?? wt.recent_big_trades_passing_winrate ?? 0}</span>
+                    <span>Wallet cache: ${wt.wallet_cache_size || 0}</span>`;
+            }
+
+            const diag = document.getElementById('strategy-diagnostics');
+            if (diag) {
+                diag.innerHTML = `
+                    <strong>Mean Reversion:</strong> liquidez mínima $${mr.min_liquidity || '?'}; volumen 24h mínimo $${mr.min_volume_24h || '?'}; candidatos por cambio Gamma ${mr.gamma_change_candidates || 0}.<br>
+                    <strong>Whale Tracking:</strong> posición mínima ${wt.min_whale_position || '?'} shares/valor; win-rate mínimo ${(parseFloat(wt.min_whale_winrate || 0) * 100).toFixed(0)}%; último poll ${wt.last_whale_poll ? new Date(wt.last_whale_poll).toLocaleTimeString('es-ES') : 'pendiente'}.`;
+            }
+        }
+
+        async function fetchStrategies() {
+            try {
+                const resp = await fetch('/api/strategies');
+                const data = await resp.json();
+                if (data.strategies) renderStrategyDiagnostics(data.strategies);
+            } catch (e) {
+                console.error('Error fetching strategies:', e);
+            }
+        }
+
+        const SIGNAL_STRATEGIES = [
+            { code: 'MM', name: 'Market Making' },
+            { code: 'BA', name: 'Bundle Arbitrage' },
+            { code: 'MR', name: 'Mean Reversion' },
+            { code: 'FLB', name: 'Favorite-Longshot Bias' },
+            { code: 'WT', name: 'Whale Tracking' }
+        ];
+
+        function signalSortValue(signal, field) {
+            const value = parseInt(signal?.[field] || 0, 10);
+            return Number.isFinite(value) ? value : 0;
+        }
+
+        function sortSignalsForDisplay(signals) {
+            return [...signals].sort((a, b) => {
+                const aBps = signalSortValue(a, 'expected_profit_bps');
+                const bBps = signalSortValue(b, 'expected_profit_bps');
+                const aIs800 = aBps === 800 ? 1 : 0;
+                const bIs800 = bBps === 800 ? 1 : 0;
+                if (aIs800 !== bIs800) return bIs800 - aIs800;
+                if (aBps !== bBps) return bBps - aBps;
+                const confidenceDiff = signalSortValue(b, 'confidence') - signalSortValue(a, 'confidence');
+                if (confidenceDiff !== 0) return confidenceDiff;
+                return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+            });
+        }
+
+        function renderSignalRow(s) {
+            const sideClass = s.side === 'BUY' ? 'badge-buy' : s.side === 'SELL' ? 'badge-sell' : s.side === 'BOTH' ? 'badge-both' : 'badge-bundle';
+            const urgencyClass = s.urgency === 'HIGH' ? 'badge-high' : s.urgency === 'MEDIUM' ? 'badge-medium' : 'badge-low';
+            const conf = s.confidence || 0;
+            const confClass = conf >= 80 ? 'confidence-high' : conf >= 50 ? 'confidence-med' : 'confidence-low';
+            const time = s.timestamp ? new Date(s.timestamp).toLocaleTimeString('es-ES') : '--:--';
+            const expectedProfit = signalSortValue(s, 'expected_profit_bps');
+
+            return `<tr class="signal-row">
+                <td>${time}</td>
+                <td class="market-question" title="${s.market_question || ''}">${s.market_question || 'Unknown'}</td>
+                <td><span class="badge ${sideClass}">${s.side || '-'}</span></td>
+                <td class="price-tag">${s.token || '-'}</td>
+                <td class="price-tag">$${parseFloat(s.entry_price || 0).toFixed(3)}</td>
+                <td class="price-tag">$${parseFloat(s.target_price || 0).toFixed(3)}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span>${conf}%</span>
+                        <div class="progress-bar" style="width:60px"><div class="progress-fill ${confClass}" style="width:${conf}%"></div></div>
+                    </div>
+                </td>
+                <td><span class="badge ${urgencyClass}">${s.urgency || '-'}</span></td>
+                <td class="${expectedProfit > 0 ? 'spread-positive' : 'spread-negative'}">${expectedProfit} bps</td>
+            </tr>`;
+        }
+
+        function renderSignals() {
+            SIGNAL_STRATEGIES.forEach(strategy => {
+                const tbody = document.getElementById(`signals-table-${strategy.code}`);
+                const counter = document.getElementById(`signals-count-${strategy.code}`);
+                if (!tbody || !counter) return;
+
+                const strategySignals = sortSignalsForDisplay(
+                    allSignals.filter(s => s.strategy_code === strategy.code)
+                );
+
+                counter.textContent = `${strategySignals.length} ${strategySignals.length === 1 ? 'señal' : 'señales'}`;
+
+                if (strategySignals.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Esperando señales de ${strategy.name}...</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = strategySignals.slice(0, 50).map(renderSignalRow).join('');
+            });
+        }
+
+        function renderMarkets() {
+            const tbody = document.getElementById('markets-table');
+            if (allMarkets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Cargando mercados...</td></tr>';
+                return;
+            }
+
+            const sorted = allMarkets
+                .filter(m => m.liquidity && parseFloat(m.liquidity) > 1000)
+                .sort((a, b) => parseFloat(b.liquidity) - parseFloat(a.liquidity))
+                .slice(0, 100);
+
+            tbody.innerHTML = sorted.map(m => {
+                const yesPrice = parseFloat(m.prices?.Yes || m.mid_price?.Yes || 0);
+                const noPrice = parseFloat(m.prices?.No || m.mid_price?.No || 0);
+                const spreadYes = parseFloat(m.spread?.Yes || 0);
+                const spreadNo = parseFloat(m.spread?.No || 0);
+                const avgSpread = ((spreadYes + spreadNo) / 2 * 100).toFixed(1);
+                const vol = parseFloat(m.volume_24h || 0);
+                const liq = parseFloat(m.liquidity || 0);
+                const sigCount = (m.signals || []).length;
+
+                return `<tr>
+                    <td class="market-question" title="${m.question || ''}">${m.question || m.slug || 'Unknown'}</td>
+                    <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #9ca3af;">${m.category || 'Other'}</span></td>
+                    <td class="price-tag">$${yesPrice.toFixed(3)}</td>
+                    <td class="price-tag">$${noPrice.toFixed(3)}</td>
+                    <td class="${avgSpread > 0.5 ? 'spread-positive' : ''}">${avgSpread}¢</td>
+                    <td>$${(vol / 1000).toFixed(1)}K</td>
+                    <td>$${(liq / 1000).toFixed(1)}K</td>
+                    <td>${sigCount > 0 ? `<span class="badge badge-buy">${sigCount}</span>` : '-'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function fetchArbitrage() {
+            try {
+                const resp = await fetch('/api/arbitrage');
+                const data = await resp.json();
+                const tbody = document.getElementById('arbitrage-table');
+
+                if (!data.opportunities || data.opportunities.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No se detectaron ineficiencias de bundle</td></tr>';
+                    document.getElementById('stat-arb').textContent = '0';
+                    return;
+                }
+
+                document.getElementById('stat-arb').textContent = data.opportunities.length;
+
+                tbody.innerHTML = data.opportunities.map(o => {
+                    const profit = (parseFloat(o.profit || 0) * 100).toFixed(2);
+                    return `<tr>
+                        <td class="market-question" title="${o.question || ''}">${o.question || 'Unknown'}</td>
+                        <td><span class="badge ${o.type === 'BUY_BUNDLE' ? 'badge-buy' : 'badge-sell'}">${o.type}</span></td>
+                        <td class="price-tag">$${o.sum}</td>
+                        <td class="spread-positive">+${profit}¢</td>
+                        <td class="price-tag">$${parseFloat(o.yes_ask || o.yes_bid || 0).toFixed(3)}</td>
+                        <td class="price-tag">$${parseFloat(o.no_ask || o.no_bid || 0).toFixed(3)}</td>
+                        <td><span class="badge badge-high">EJECUTAR</span></td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                console.error('Error fetching arbitrage:', e);
+            }
+        }
+
+        async function fetchSignals() {
+            try {
+                const resp = await fetch('/api/signals?limit=1000');
+                const data = await resp.json();
+                if (data.signals) {
+                    allSignals = data.signals;
+                    if (document.getElementById('tab-signals').classList.contains('active')) {
+                        renderSignals();
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching signals:', e);
+            }
+        }
+
+        async function fetchMarkets() {
+            try {
+                const resp = await fetch('/api/markets?limit=100');
+                const data = await resp.json();
+                if (data.markets) {
+                    allMarkets = data.markets;
+                    if (document.getElementById('tab-markets').classList.contains('active')) {
+                        renderMarkets();
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching markets:', e);
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'signals') fetchSignals();
+            if (tabName === 'arbitrage') fetchArbitrage();
+            if (tabName === 'markets') fetchMarkets();
+            if (tabName === 'strategies') fetchStrategies();
+        }
+
+        // Polling para datos que no vienen por WS
+        setInterval(() => {
+            if (document.getElementById('tab-signals').classList.contains('active')) {
+                fetchSignals();
+            }
+            if (document.getElementById('tab-arbitrage').classList.contains('active')) {
+                fetchArbitrage();
+            }
+            if (document.getElementById('tab-markets').classList.contains('active')) {
+                fetchMarkets();
+            }
+            if (document.getElementById('tab-strategies').classList.contains('active')) {
+                fetchStrategies();
+            }
+        }, 3000);
+
+        // Inicial
+        setTimeout(() => {
+            fetchSignals();
+            fetchArbitrage();
+            fetchMarkets();
+            fetchStrategies();
+        }, 2000);
+
+        addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');
+    </script>
+</body>
+</html>
