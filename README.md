@@ -68,11 +68,26 @@ La pestaña **Señales en Tiempo Real** está dividida en 5 paneles independient
 
 Dentro de cada panel, las señales mantienen la prioridad operativa: primero las de **800 bps**, luego mayor profit esperado, mayor confianza y señal más reciente.
 
+## 🗂️ Clasificación de mercados
+
+La pestaña **Todos los Mercados** incluye filtros por categoría:
+
+- Politics
+- Sports
+- Weather
+- Economics
+- Crypto
+- Culture
+- Science
+- Other
+
+Si Gamma API no devuelve categoría, QUANT POLYMARKET la infiere automáticamente desde `question`, `slug` y `tags` usando palabras clave. Esto permite separar mercados de criptomonedas, clima, política, deportes, economía, cultura y ciencia aunque el campo `category` venga vacío.
+
 ## 📡 Endpoints API
 
 | Endpoint | Descripción |
 |----------|-------------|
-| `GET /api/markets` | Lista de mercados activos |
+| `GET /api/markets?limit=1000&category=Crypto` | Lista de mercados activos con resumen y filtro opcional por categoría |
 | `GET /api/market/{id}` | Detalle de un mercado |
 | `GET /api/signals?limit=1000` | Señales activas ordenadas para el dashboard |
 | `GET /api/arbitrage` | Oportunidades de bundle arbitrage |

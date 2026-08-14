@@ -68,4 +68,53 @@ CATEGORIES = {
     "crypto": "Crypto",
     "culture": "Culture",
     "science": "Science",
+    "other": "Other",
+}
+
+# Clasificación local cuando Gamma no devuelve categoría explícita.
+# Se aplica sobre question + slug + tags y permite filtrar visualmente mercados
+# como Crypto, Clima, Política, Deportes, Economía, Cultura y Ciencia.
+CATEGORY_KEYWORDS = {
+    "crypto": [
+        "bitcoin", "btc", "ethereum", "eth", "solana", "sol", "xrp", "doge",
+        "dogecoin", "litecoin", "crypto", "cryptocurrency", "blockchain", "token",
+        "stablecoin", "usdc", "usdt", "binance", "coinbase", "satoshi", "defi",
+        "spot etf", "etf crypto",
+    ],
+    "weather": [
+        "weather", "temperature", "rain", "snow", "hurricane", "storm", "tornado",
+        "flood", "heat", "cold", "wind", "noaa", "climate", "temperatura", "lluvia",
+        "huracán", "tormenta", "clima", "snowfall", "blizzard",
+    ],
+    "politics": [
+        "trump", "biden", "president", "election", "senate", "congress", "governor",
+        "mayor", "democrat", "democrats", "republican", "republicans", "nomination", "primary", "cabinet", "minister",
+        "parliament", "vote", "poll", "politics", "putin", "zelensky", "israel", "gaza",
+        "ukraine", "russia", "china", "tariff", "government", "supreme court",
+        "nato", "donbas", "snowden", "presidential", "democratic", "republican",
+        "governor race", "governor", "presidential election", "election",
+    ],
+    "sports": [
+        "nba", "nfl", "mlb", "nhl", "ufc", "fifa", "soccer", "football", "tennis",
+        "golf", "formula 1", "f1", "champions league", "world cup", "super bowl",
+        "baseball", "basketball", "hockey", "olympics", "ballon d'or", "premier league",
+        "laliga", "liga", "serie a", "wimbledon", "us open",
+    ],
+    "economics": [
+        "fed", "federal reserve", "rate cut", "interest rate", "inflation", "cpi", "ppi",
+        "jobs report", "unemployment", "gdp", "recession", "s&p", "sp500", "nasdaq",
+        "dow", "oil", "gold", "silver", "treasury", "bond", "yield", "stock market",
+        "economy", "tariff", "fomc", "macro",
+    ],
+    "culture": [
+        "oscar", "oscars", "grammy", "emmy", "movie", "film", "box office", "album",
+        "song", "music", "celebrity", "taylor swift", "netflix", "disney", "youtube",
+        "tiktok", "x/twitter", "twitter", "met gala", "eurovision", "festival",
+        "george r. r. martin", "winds of winter", "game of thrones", "book",
+    ],
+    "science": [
+        "spacex", "nasa", "starship", "rocket", "launch", "moon", "mars", "space",
+        "ai", "artificial intelligence", "openai", "anthropic", "google deepmind",
+        "covid", "vaccine", "fda", "science", "research", "clinical trial",
+    ],
 }

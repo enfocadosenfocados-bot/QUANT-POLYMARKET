@@ -442,6 +442,57 @@
         .signals-strategy-panel table {
             min-width: 1050px;
         }
+
+        .market-category-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .market-category-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .market-category-subtitle {
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .market-category-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .category-chip {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .category-chip:hover {
+            color: var(--text);
+            border-color: rgba(59,130,246,0.45);
+        }
+
+        .category-chip.active {
+            color: white;
+            background: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
     </style>
 </head>
 <body>
@@ -649,6 +700,15 @@
 
             <!-- Tab: Mercados -->
             <div id="tab-markets" class="tab-content">
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">Mercados por categoría</div>
+                        <div class="market-category-subtitle" id="market-category-summary">Clasificación automática por question, slug y tags cuando Gamma no trae categoría.</div>
+                    </div>
+                    <div class="market-category-filters" id="market-category-filters">
+                        <button class="category-chip active" data-category="All" onclick="setMarketCategory('All')">Todos</button>
+                    </div>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -740,6 +800,10 @@
         let allMarkets = [];
         let allSignals = [];
         let logEntries = [];
+        let marketCategories = {};
+        let selectedMarketCategory = 'All';
+
+        const MARKET_CATEGORIES = ['Politics', 'Sports', 'Weather', 'Economics', 'Crypto', 'Culture', 'Science', 'Other'];
 
         function addLog(message, type = 'info') {
             const time = new Date().toLocaleTimeString('es-ES');
@@ -789,6 +853,7 @@
             else if (data.type === 'market_update') {
                 const updatedMarkets = data.markets || [];
                 updatedMarkets.forEach(um => {
+                    if (selectedMarketCategory !== 'All' && getMarketCategory(um) !== selectedMarketCategory) return;
                     const idx = allMarkets.findIndex(m => m.market_id === um.market_id);
                     if (idx >= 0) {
                         allMarkets[idx] = um;
@@ -936,10 +1001,49 @@
             });
         }
 
+        function getMarketCategory(market) {
+            return market?.category || 'Other';
+        }
+
+        function categoryLabel(category) {
+            return category === 'All' ? 'Todos' : category;
+        }
+
+        function renderMarketCategoryFilters() {
+            const container = document.getElementById('market-category-filters');
+            if (!container) return;
+
+            const chips = [{ name: 'All', count: Object.values(marketCategories).reduce((sum, count) => sum + count, 0) }]
+                .concat(MARKET_CATEGORIES.map(name => ({ name, count: marketCategories[name] || 0 })));
+
+            container.innerHTML = chips.map(({ name, count }) => `
+                <button class="category-chip ${selectedMarketCategory === name ? 'active' : ''}"
+                        data-category="${name}"
+                        onclick="setMarketCategory('${name}')">
+                    ${categoryLabel(name)} <span>${count}</span>
+                </button>
+            `).join('');
+
+            const summary = document.getElementById('market-category-summary');
+            if (summary) {
+                const activeText = selectedMarketCategory === 'All'
+                    ? 'Mostrando todas las categorías clasificadas automáticamente.'
+                    : `Mostrando mercados de ${selectedMarketCategory}.`;
+                summary.textContent = `${activeText} Total cargado: ${chips[0].count} mercados.`;
+            }
+        }
+
+        function setMarketCategory(category) {
+            selectedMarketCategory = category;
+            renderMarketCategoryFilters();
+            fetchMarkets();
+        }
+
         function renderMarkets() {
             const tbody = document.getElementById('markets-table');
             if (allMarkets.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Cargando mercados...</td></tr>';
+                renderMarketCategoryFilters();
                 return;
             }
 
@@ -957,10 +1061,11 @@
                 const vol = parseFloat(m.volume_24h || 0);
                 const liq = parseFloat(m.liquidity || 0);
                 const sigCount = (m.signals || []).length;
+                const category = getMarketCategory(m);
 
                 return `<tr>
                     <td class="market-question" title="${m.question || ''}">${m.question || m.slug || 'Unknown'}</td>
-                    <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #9ca3af;">${m.category || 'Other'}</span></td>
+                    <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #9ca3af;">${category}</span></td>
                     <td class="price-tag">$${yesPrice.toFixed(3)}</td>
                     <td class="price-tag">$${noPrice.toFixed(3)}</td>
                     <td class="${avgSpread > 0.5 ? 'spread-positive' : ''}">${avgSpread}¢</td>
@@ -969,6 +1074,7 @@
                     <td>${sigCount > 0 ? `<span class="badge badge-buy">${sigCount}</span>` : '-'}</td>
                 </tr>`;
             }).join('');
+            renderMarketCategoryFilters();
         }
 
         async function fetchArbitrage() {
@@ -1019,12 +1125,17 @@
 
         async function fetchMarkets() {
             try {
-                const resp = await fetch('/api/markets?limit=100');
+                const params = new URLSearchParams({ limit: '1000' });
+                if (selectedMarketCategory !== 'All') params.set('category', selectedMarketCategory);
+                const resp = await fetch(`/api/markets?${params.toString()}`);
                 const data = await resp.json();
                 if (data.markets) {
                     allMarkets = data.markets;
+                    marketCategories = data.categories || marketCategories;
                     if (document.getElementById('tab-markets').classList.contains('active')) {
                         renderMarkets();
+                    } else {
+                        renderMarketCategoryFilters();
                     }
                 }
             } catch (e) {

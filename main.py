@@ -1,6 +1,7 @@
 """QUANT POLYMARKET - Backend FastAPI"""
 import asyncio
 import json
+import re
 import time
 from contextlib import asynccontextmanager, suppress
 from decimal import Decimal, InvalidOperation
@@ -12,7 +13,15 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
-from config import GAMMA_POLL_INTERVAL, CLOB_POLL_INTERVAL, MIN_LIQUIDITY, MIN_VOLUME_24H, STRATEGY_PARAMS
+from config import (
+    CATEGORY_KEYWORDS,
+    CATEGORIES,
+    GAMMA_POLL_INTERVAL,
+    CLOB_POLL_INTERVAL,
+    MIN_LIQUIDITY,
+    MIN_VOLUME_24H,
+    STRATEGY_PARAMS,
+)
 from market_registry import registry
 from polymarket_client import pm_client
 from strategies import engine
@@ -122,6 +131,82 @@ def _trade_notional(trade: Dict[str, Any]) -> Decimal:
 def _trade_timestamp(trade: Dict[str, Any]) -> int:
     return _as_int(trade.get("timestamp"), 0)
 
+
+def _keyword_matches(text: str, keyword: str) -> bool:
+    keyword = keyword.lower().strip()
+    if not keyword:
+        return False
+    # Evita falsos positivos: "eth" no debe matchear "whether", "ai" no debe
+    # matchear "rain" y "rain" no debe matchear "Ukraine".
+    if keyword.replace("/", "").replace("&", "").isalnum() and " " not in keyword:
+        return re.search(rf"(?<![a-z0-9]){re.escape(keyword)}(?![a-z0-9])", text) is not None
+    return keyword in text
+
+
+def _category_keyword_score(text: str, keywords: List[str], weight: int) -> int:
+    return sum(weight for keyword in keywords if _keyword_matches(text, keyword))
+
+
+def classify_market_category(market: Dict[str, Any]) -> str:
+    """Clasificar mercados cuando Gamma no trae una categoría útil.
+
+    Gamma API suele devolver `category` vacío o poco fiable en muchos mercados.
+    Para que el dashboard pueda separar Crypto, Weather, Politics, Sports,
+    Economics, Culture y Science, priorizamos la inferencia desde question +
+    slug + tags y solo usamos `category` como fallback.
+    """
+    raw_category = str(market.get("category") or "").strip()
+    valid_categories = {name.lower(): name for name in CATEGORIES.values()}
+    valid_codes = {code.lower(): name for code, name in CATEGORIES.items()}
+
+    tags = _as_list(market.get("tags"))
+    primary_text = " ".join([
+        str(market.get("question") or market.get("title") or ""),
+        str(market.get("slug") or ""),
+    ]).lower().replace("-", " ").replace("_", " ")
+
+    tag_parts = []
+    for tag in tags:
+        if isinstance(tag, dict):
+            tag_parts.extend(str(tag.get(key) or "") for key in ("label", "name", "slug"))
+        else:
+            tag_parts.append(str(tag))
+    tag_text = " ".join(tag_parts).lower().replace("-", " ").replace("_", " ")
+
+    primary_scores = {}
+    tag_scores = {}
+    for code, keywords in CATEGORY_KEYWORDS.items():
+        # La pregunta/slug es más confiable que los tags crudos de Gamma.
+        primary_scores[code] = _category_keyword_score(primary_text, keywords, 3)
+        tag_scores[code] = _category_keyword_score(tag_text, keywords, 1)
+
+    best_primary_code, best_primary_score = max(primary_scores.items(), key=lambda item: item[1])
+    if best_primary_score > 0:
+        return CATEGORIES.get(best_primary_code, best_primary_code.title())
+
+    best_tag_code, best_tag_score = max(tag_scores.items(), key=lambda item: item[1])
+    if best_tag_score > 0:
+        return CATEGORIES.get(best_tag_code, best_tag_code.title())
+
+    # La categoría cruda de Gamma queda como último recurso solo si es una de
+    # las categorías esperadas. En producción puede venir vacía o incorrecta,
+    # por eso no tiene prioridad sobre question/slug/tags.
+    if raw_category:
+        lowered = raw_category.lower()
+        if lowered in valid_categories:
+            return valid_categories[lowered]
+        if lowered in valid_codes:
+            return valid_codes[lowered]
+    return CATEGORIES.get("other", "Other")
+
+
+def build_category_summary(markets: List[Dict[str, Any]]) -> Dict[str, int]:
+    summary = {name: 0 for name in CATEGORIES.values()}
+    for market in markets:
+        category = market.get("category") or "Other"
+        summary[category] = summary.get(category, 0) + 1
+    return dict(sorted(summary.items(), key=lambda item: (-item[1], item[0])))
+
 # WebSocket connections del dashboard
 class ConnectionManager:
     def __init__(self):
@@ -207,7 +292,7 @@ async def gamma_polling_task():
                         "condition_id": m.get("conditionId", ""),
                         "slug": m.get("slug", ""),
                         "question": m.get("question", m.get("title", "")),
-                        "category": m.get("category", ""),
+                        "category": classify_market_category(m),
                         "tags": _as_list(m.get("tags")),
                         "outcomes": outcomes,
                         "token_ids": token_ids,
@@ -634,12 +719,22 @@ async def root():
 
 
 @app.get("/api/markets")
-async def get_markets(limit: int = 50, category: str = None):
+async def get_markets(
+    limit: int = Query(default=50, ge=1, le=5000),
+    category: str | None = None,
+):
     """Obtener mercados activos"""
     markets = registry.get_all_markets()
+    categories = build_category_summary(markets)
     if category:
-        markets = [m for m in markets if m.get("category", "").lower() == category.lower()]
-    return {"markets": markets[:limit], "total": len(markets)}
+        markets = [m for m in markets if m.get("category", "Other").lower() == category.lower()]
+    return {
+        "markets": markets[:limit],
+        "total": len(markets),
+        "categories": categories,
+        "available_categories": list(CATEGORIES.values()),
+        "selected_category": category or "All",
+    }
 
 
 @app.get("/api/market/{market_id}")
