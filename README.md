@@ -5,13 +5,18 @@ Sistema de inteligencia de mercado en tiempo real para Polymarket con estrategia
 ## 🚀 Características
 
 - **Datos en tiempo real** vía WebSocket de Polymarket (latencia ~100-500ms)
-- **6 estrategias quant** calculadas automáticamente:
+- **11 estrategias quant** calculadas automáticamente:
   - A: Market Making intra-mercado
   - B: Bundle Arbitrage (YES + NO ≠ $1)
   - C: Mean Reversion (historial local + fallback Gamma 1d/1w)
   - D: Favorite-Longshot Bias
   - E: Latencia en datos externos (placeholder)
   - F: Whale Tracking (Data API pública: top holders + trades recientes + posiciones públicas)
+  - S02: Weather NOAA
+  - S03: Nothing Ever Happens
+  - S05: NegRisk Rebalancing
+  - S10: Yes Bias
+  - S12: High Probability Harvesting
 - **Dashboard web** con actualizaciones en tiempo real
 - **Reconexión automática** de WebSockets
 - **Sin autenticación requerida** para lectura de datos
@@ -58,13 +63,18 @@ El script crea `venv`, instala/actualiza dependencias y arranca el backend.
 
 ## 🧭 Dashboard por estrategias
 
-La pestaña **Señales en Tiempo Real** está dividida en 5 paneles independientes:
+La pestaña **Señales en Tiempo Real** está dividida en paneles independientes por estrategia:
 
 - **A: Market Making** (`MM`)
 - **B: Bundle Arbitrage** (`BA`)
 - **C: Mean Reversion** (`MR`)
 - **D: Favorite-Longshot Bias** (`FLB`)
 - **F: Whale Tracking** (`WT`)
+- **S02: Weather NOAA** (`S02`)
+- **S03: Nothing Ever Happens** (`S03`)
+- **S05: NegRisk Rebalancing** (`S05`)
+- **S10: Yes Bias** (`S10`)
+- **S12: High Probability Harvesting** (`S12`)
 
 Dentro de cada panel, las señales mantienen la prioridad operativa: primero las de **800 bps**, luego mayor profit esperado, mayor confianza y señal más reciente.
 
@@ -106,7 +116,8 @@ Polymarket APIs
               ▼
     QUANT POLYMARKET
     ├── market_registry.py ──→ Cache en memoria
-    ├── strategies.py ─────────→ Motor de estrategias
+    ├── strategies.py ─────────→ Motor de estrategias + adaptador modular Sxx
+    ├── core_models.py ────────→ Modelos base para estrategias modulares
     ├── polymarket_client.py ─→ Cliente async
     └── main.py ─────────────→ FastAPI + WebSocket propio
               │

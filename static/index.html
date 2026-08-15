@@ -440,7 +440,35 @@
         }
 
         .signals-strategy-panel table {
-            min-width: 1050px;
+            min-width: 1160px;
+        }
+
+        .signal-category-row td {
+            background: rgba(59, 130, 246, 0.08);
+            color: var(--text);
+            font-weight: 800;
+            letter-spacing: 0.35px;
+            text-transform: uppercase;
+            border-top: 1px solid rgba(59, 130, 246, 0.25);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.15);
+        }
+
+        .signal-category-row:hover td {
+            background: rgba(59, 130, 246, 0.08);
+        }
+
+        .signal-category-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .signal-category-count {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: none;
         }
 
         .market-category-toolbar {
@@ -576,11 +604,11 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="signals-table-MM">
-                                    <tr><td colspan="9" class="empty-state">Esperando señales de Market Making...</td></tr>
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Market Making...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -598,11 +626,11 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="signals-table-BA">
-                                    <tr><td colspan="9" class="empty-state">Esperando señales de Bundle Arbitrage...</td></tr>
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Bundle Arbitrage...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -620,11 +648,11 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="signals-table-MR">
-                                    <tr><td colspan="9" class="empty-state">Esperando señales de Mean Reversion...</td></tr>
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Mean Reversion...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -642,11 +670,11 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="signals-table-FLB">
-                                    <tr><td colspan="9" class="empty-state">Esperando señales de Favorite-Longshot Bias...</td></tr>
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Favorite-Longshot Bias...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -664,11 +692,121 @@
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Hora</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="signals-table-WT">
-                                    <tr><td colspan="9" class="empty-state">Esperando señales de Whale Tracking...</td></tr>
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Whale Tracking...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S02">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S02: Weather NOAA</div>
+                                <div class="signals-strategy-subtitle">Señales meteorológicas por distribución normal del pronóstico.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S02">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S02">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Weather NOAA...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S03">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S03: Nothing Ever Happens</div>
+                                <div class="signals-strategy-subtitle">Señales BUY NO en eventos dramáticos sobrecomprados.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S03">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S03">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Nothing Ever Happens...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S05">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S05: NegRisk Rebalancing</div>
+                                <div class="signals-strategy-subtitle">Arbitraje multi-resultado cuando el canasto YES supera $1.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S05">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S05">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de NegRisk Rebalancing...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S10">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S10: Yes Bias</div>
+                                <div class="signals-strategy-subtitle">Señales BUY NO contra euforia viral y sobrecompra de YES.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S10">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S10">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Yes Bias...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S12">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S12: High Probability Harvesting</div>
+                                <div class="signals-strategy-subtitle">Compra de YES 0.93-0.985 cerca de resolución.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S12">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S12">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de High Probability Harvesting...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -777,6 +915,36 @@
                         </div>
                         <div class="strategy-meta" id="wt-meta"><span>Esperando primer poll de whales...</span></div>
                     </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">S02: Weather NOAA</div>
+                        <div class="strategy-desc">
+                            Compara mercados de temperatura/clima con una distribución normal del pronóstico oficial. Sin feed NOAA externo usa un estimador conservador.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">S03: Nothing Ever Happens</div>
+                        <div class="strategy-desc">
+                            Detecta eventos catastróficos o dramáticos de corto plazo y busca edge en BUY NO cuando el YES está sobrecomprado.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">S05: NegRisk Rebalancing</div>
+                        <div class="strategy-desc">
+                            Escanea mercados multi-resultado; si la suma del canasto YES supera $1.02 genera señal de arbitraje/rebalanceo.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">S10: Yes Bias</div>
+                        <div class="strategy-desc">
+                            Explota narrativas virales/históricas donde retail sobrecompra YES y la estrategia encuentra valor relativo en BUY NO.
+                        </div>
+                    </div>
+                    <div class="strategy-card">
+                        <div class="strategy-name">S12: High Probability Harvesting</div>
+                        <div class="strategy-desc">
+                            Busca contratos YES entre 0.93 y 0.985 con vencimiento menor a 30 días para capturar convergencia a $1.
+                        </div>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 15px;">
                     <div class="card-header"><span class="card-title">Diagnóstico de Estrategias</span></div>
@@ -864,6 +1032,9 @@
                 if (document.getElementById('tab-markets').classList.contains('active')) {
                     renderMarkets();
                 }
+                if (document.getElementById('tab-signals').classList.contains('active')) {
+                    renderSignals();
+                }
             }
         };
 
@@ -932,12 +1103,75 @@
             { code: 'BA', name: 'Bundle Arbitrage' },
             { code: 'MR', name: 'Mean Reversion' },
             { code: 'FLB', name: 'Favorite-Longshot Bias' },
-            { code: 'WT', name: 'Whale Tracking' }
+            { code: 'WT', name: 'Whale Tracking' },
+            { code: 'S02', name: 'Weather NOAA' },
+            { code: 'S03', name: 'Nothing Ever Happens' },
+            { code: 'S05', name: 'NegRisk Rebalancing' },
+            { code: 'S10', name: 'Yes Bias' },
+            { code: 'S12', name: 'High Probability Harvesting' }
         ];
 
         function signalSortValue(signal, field) {
             const value = parseInt(signal?.[field] || 0, 10);
             return Number.isFinite(value) ? value : 0;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getSignalCategory(signal) {
+            return signal?.market_category || signal?.category || 'Other';
+        }
+
+        function signalTimestampValue(signal) {
+            const value = new Date(signal?.timestamp || signal?.first_seen || 0).getTime();
+            return Number.isNaN(value) ? 0 : value;
+        }
+
+        function signalUniqueKey(signal) {
+            return [
+                signal?.dedupe_key || signal?.signal_id || '',
+                signal?.market_id || '',
+                signal?.strategy_code || signal?.strategy || '',
+                signal?.side || '',
+                signal?.token || '',
+            ].join('|');
+        }
+
+        function getSignalsFromMarkets() {
+            return allMarkets.flatMap(market => (market.signals || [])
+                .filter(signal => !signal.status || signal.status === 'ACTIVE')
+                .map(signal => ({
+                    ...signal,
+                    market_id: signal.market_id || market.market_id,
+                    market_question: signal.market_question || market.question || market.slug || 'Unknown',
+                    market_slug: signal.market_slug || market.slug || '',
+                    market_category: signal.market_category || signal.category || market.category || 'Other',
+                    category: signal.category || signal.market_category || market.category || 'Other',
+                    market_liquidity: signal.market_liquidity || market.liquidity,
+                    market_volume_24h: signal.market_volume_24h || market.volume_24h,
+                }))
+            );
+        }
+
+        function getMergedActiveSignals() {
+            const byKey = new Map();
+            [...allSignals, ...getSignalsFromMarkets()]
+                .filter(signal => !signal.status || signal.status === 'ACTIVE')
+                .forEach(signal => {
+                    const key = signalUniqueKey(signal);
+                    const existing = byKey.get(key);
+                    if (!existing || signalTimestampValue(signal) >= signalTimestampValue(existing)) {
+                        byKey.set(key, signal);
+                    }
+                });
+            return [...byKey.values()];
         }
 
         function sortSignalsForDisplay(signals) {
@@ -961,12 +1195,15 @@
             const confClass = conf >= 80 ? 'confidence-high' : conf >= 50 ? 'confidence-med' : 'confidence-low';
             const time = s.timestamp ? new Date(s.timestamp).toLocaleTimeString('es-ES') : '--:--';
             const expectedProfit = signalSortValue(s, 'expected_profit_bps');
+            const category = escapeHtml(getSignalCategory(s));
+            const marketQuestion = escapeHtml(s.market_question || 'Unknown');
 
             return `<tr class="signal-row">
                 <td>${time}</td>
-                <td class="market-question" title="${s.market_question || ''}">${s.market_question || 'Unknown'}</td>
-                <td><span class="badge ${sideClass}">${s.side || '-'}</span></td>
-                <td class="price-tag">${s.token || '-'}</td>
+                <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #9ca3af;">${category}</span></td>
+                <td class="market-question" title="${marketQuestion}">${marketQuestion}</td>
+                <td><span class="badge ${sideClass}">${escapeHtml(s.side || '-')}</span></td>
+                <td class="price-tag">${escapeHtml(s.token || '-')}</td>
                 <td class="price-tag">$${parseFloat(s.entry_price || 0).toFixed(3)}</td>
                 <td class="price-tag">$${parseFloat(s.target_price || 0).toFixed(3)}</td>
                 <td>
@@ -975,29 +1212,59 @@
                         <div class="progress-bar" style="width:60px"><div class="progress-fill ${confClass}" style="width:${conf}%"></div></div>
                     </div>
                 </td>
-                <td><span class="badge ${urgencyClass}">${s.urgency || '-'}</span></td>
+                <td><span class="badge ${urgencyClass}">${escapeHtml(s.urgency || '-')}</span></td>
                 <td class="${expectedProfit > 0 ? 'spread-positive' : 'spread-negative'}">${expectedProfit} bps</td>
             </tr>`;
         }
 
+        function renderSignalCategoryGroup(category, signals) {
+            return `<tr class="signal-category-row">
+                <td colspan="10">
+                    <div class="signal-category-summary">
+                        <span>📁 ${escapeHtml(category)}</span>
+                        <span class="signal-category-count">${signals.length} señal${signals.length === 1 ? '' : 'es'} activa${signals.length === 1 ? '' : 's'}</span>
+                    </div>
+                </td>
+            </tr>${signals.map(renderSignalRow).join('')}`;
+        }
+
+        function groupSignalsByCategory(signals) {
+            return signals.reduce((acc, signal) => {
+                const category = getSignalCategory(signal);
+                if (!acc[category]) acc[category] = [];
+                acc[category].push(signal);
+                return acc;
+            }, {});
+        }
+
         function renderSignals() {
+            const mergedSignals = getMergedActiveSignals();
             SIGNAL_STRATEGIES.forEach(strategy => {
                 const tbody = document.getElementById(`signals-table-${strategy.code}`);
                 const counter = document.getElementById(`signals-count-${strategy.code}`);
                 if (!tbody || !counter) return;
 
                 const strategySignals = sortSignalsForDisplay(
-                    allSignals.filter(s => s.strategy_code === strategy.code)
+                    mergedSignals.filter(s => s.strategy_code === strategy.code)
                 );
 
                 counter.textContent = `${strategySignals.length} ${strategySignals.length === 1 ? 'señal' : 'señales'}`;
 
                 if (strategySignals.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Esperando señales de ${strategy.name}...</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Esperando señales de ${strategy.name}...</td></tr>`;
                     return;
                 }
 
-                tbody.innerHTML = strategySignals.slice(0, 50).map(renderSignalRow).join('');
+                const limitedSignals = strategySignals.slice(0, 50);
+                const grouped = groupSignalsByCategory(limitedSignals);
+                const categories = Object.keys(grouped).sort((a, b) => {
+                    const maxConfA = Math.max(...grouped[a].map(s => signalSortValue(s, 'confidence')));
+                    const maxConfB = Math.max(...grouped[b].map(s => signalSortValue(s, 'confidence')));
+                    if (maxConfB !== maxConfA) return maxConfB - maxConfA;
+                    return a.localeCompare(b);
+                });
+
+                tbody.innerHTML = categories.map(category => renderSignalCategoryGroup(category, grouped[category])).join('');
             });
         }
 
@@ -1137,6 +1404,9 @@
                     } else {
                         renderMarketCategoryFilters();
                     }
+                    if (document.getElementById('tab-signals').classList.contains('active')) {
+                        renderSignals();
+                    }
                 }
             } catch (e) {
                 console.error('Error fetching markets:', e);
@@ -1149,7 +1419,10 @@
             document.getElementById(`tab-${tabName}`).classList.add('active');
             event.target.classList.add('active');
 
-            if (tabName === 'signals') fetchSignals();
+            if (tabName === 'signals') {
+                fetchSignals();
+                fetchMarkets();
+            }
             if (tabName === 'arbitrage') fetchArbitrage();
             if (tabName === 'markets') fetchMarkets();
             if (tabName === 'strategies') fetchStrategies();
@@ -1159,6 +1432,7 @@
         setInterval(() => {
             if (document.getElementById('tab-signals').classList.contains('active')) {
                 fetchSignals();
+                fetchMarkets();
             }
             if (document.getElementById('tab-arbitrage').classList.contains('active')) {
                 fetchArbitrage();

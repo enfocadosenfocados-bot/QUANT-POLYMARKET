@@ -310,6 +310,15 @@ async def gamma_polling_task():
                         "min_order_size": m.get("minOrderSize", 0),
                         "tick_size": m.get("tickSize", 0.001),
                         "neg_risk": m.get("negRisk", False),
+                        "end_date": (
+                            m.get("endDate")
+                            or m.get("endDateIso")
+                            or m.get("end_date")
+                            or m.get("end_date_iso")
+                            or m.get("endDateTime")
+                        ),
+                        "start_date": m.get("startDate") or m.get("start_date"),
+                        "resolution_source": m.get("resolutionSource") or m.get("resolution_source") or "",
                         "active": m.get("active", True),
                         "closed": m.get("closed", False),
                         "resolved": m.get("resolved", False),
@@ -747,10 +756,33 @@ async def get_market(market_id: str):
 
 
 @app.get("/api/signals")
-async def get_signals(limit: int = Query(default=250, ge=1, le=1000)):
-    """Obtener señales activas ordenadas para el dashboard"""
+async def get_signals(
+    limit: int = Query(default=1000, ge=1, le=5000),
+    category: str | None = None,
+):
+    """Obtener señales activas ordenadas para el dashboard.
+
+    Cada señal sale enriquecida con `market_category` para poder organizar en
+    tiempo real las oportunidades por Crypto, Politics, Sports, etc. El filtro
+    opcional `category` permite pedir solo una categoría concreta desde la API.
+    """
     signals = registry.get_active_signals()
-    return {"signals": signals[:limit], "total": len(signals)}
+    categories = build_category_summary([
+        {"category": signal.get("market_category") or signal.get("category") or "Other"}
+        for signal in signals
+    ])
+    if category:
+        signals = [
+            signal for signal in signals
+            if (signal.get("market_category") or signal.get("category") or "Other").lower() == category.lower()
+        ]
+    return {
+        "signals": signals[:limit],
+        "total": len(signals),
+        "categories": categories,
+        "available_categories": list(CATEGORIES.values()),
+        "selected_category": category or "All",
+    }
 
 
 @app.get("/api/stats")

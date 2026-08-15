@@ -46,6 +46,31 @@ def sort_asks(asks: List[Any]) -> List[Any]:
     return sorted(asks or [], key=order_price)
 
 
+def parse_datetime(value: Any) -> Optional[datetime]:
+    """Parsear fechas ISO/epoch de Gamma de forma tolerante."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            if value > 10_000_000_000:
+                value = value / 1000
+            return datetime.fromtimestamp(value, tz=UTC)
+        except (ValueError, OSError, OverflowError):
+            return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+        except ValueError:
+            return None
+    return None
+
+
 @dataclass
 class PriceHistory:
     """Historial de precios para cálculos de estrategia"""
@@ -214,6 +239,9 @@ class MarketSnapshot:
             "min_order_size": str(self.min_order_size),
             "tick_size": str(self.tick_size),
             "neg_risk": self.neg_risk,
+            "end_date": self.end_date.isoformat() if self.end_date else None,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "resolution_source": self.resolution_source,
             "active": self.active,
             "closed": self.closed,
             "resolved": self.resolved,
@@ -305,6 +333,10 @@ class MarketRegistry:
                 m.tick_size = to_decimal(data["tick_size"], "0.001")
             if "neg_risk" in data:
                 m.neg_risk = bool(data["neg_risk"])
+            if "end_date" in data:
+                m.end_date = parse_datetime(data["end_date"])
+            if "start_date" in data:
+                m.start_date = parse_datetime(data["start_date"])
 
             if "initial_prices" in data and isinstance(data["initial_prices"], dict):
                 for outcome, price in data["initial_prices"].items():
@@ -451,7 +483,17 @@ class MarketRegistry:
         for m in self.markets.values():
             for s in m.signals:
                 if s.get("status") == "ACTIVE":
-                    signals.append({**s, "market_question": m.question, "market_id": m.market_id})
+                    category = m.category or "Other"
+                    signals.append({
+                        **s,
+                        "market_question": m.question,
+                        "market_id": m.market_id,
+                        "market_slug": m.slug,
+                        "market_category": category,
+                        "category": category,
+                        "market_liquidity": str(m.liquidity),
+                        "market_volume_24h": str(m.volume_24h),
+                    })
 
         def sort_value(signal: Dict, field: str, default: int = 0) -> int:
             try:

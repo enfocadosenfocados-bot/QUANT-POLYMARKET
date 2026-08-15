@@ -4,14 +4,35 @@ from typing import Dict, List, Optional, Any
 import uuid
 
 from config import STRATEGY_PARAMS
+from core_models import Market, Signal
 from market_registry import MarketSnapshot, order_price, order_size
+from s02_weather_noaa import WeatherNOAA
+from s03_nothing_ever_happens import NothingEverHappens
+from s05_negrisk_rebalancing import NegRiskRebalancing
+from s10_yes_bias import YesBiasExploitation
+from s12_high_prob_harvesting import HighProbabilityHarvesting
 
 
 class StrategyEngine:
     """Motor de cálculo de estrategias en tiempo real"""
 
+    MODULAR_STRATEGY_LABELS = {
+        "s02_weather_noaa": "S02: Weather NOAA",
+        "s03_nothing_ever_happens": "S03: Nothing Ever Happens",
+        "s05_negrisk_rebalancing": "S05: NegRisk Rebalancing",
+        "s10_yes_bias": "S10: Yes Bias",
+        "s12_high_prob_harvesting": "S12: High Prob Harvesting",
+    }
+
     def __init__(self):
         self.params = STRATEGY_PARAMS
+        self.modular_strategies = [
+            WeatherNOAA(),
+            NothingEverHappens(),
+            NegRiskRebalancing(),
+            YesBiasExploitation(),
+            HighProbabilityHarvesting(),
+        ]
 
     @staticmethod
     def _clamp_probability(value: Decimal) -> Decimal:
@@ -60,6 +81,199 @@ class StrategyEngine:
         sig = self._whale_tracking(market)
         if sig:
             signals.append(sig)
+
+        # Estrategias modulares S02/S03/S05/S10/S12
+        signals.extend(self._calculate_modular_strategies(market))
+
+        return signals
+
+    @staticmethod
+    def _decimal_to_float(value: Any, default: float = 0.0) -> float:
+        if value in (None, ""):
+            return default
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _market_price_for_outcome(self, m: MarketSnapshot, outcome: str) -> float:
+        """Obtener precio actual robusto para un outcome."""
+        for source in (m.mid_price, m.prices, m.last_trade, m.best_ask, m.best_bid):
+            price = self._decimal_to_float(source.get(outcome))
+            if price > 0:
+                return price
+
+        if outcome.lower() in ("yes", "no"):
+            inverse = "No" if outcome.lower() == "yes" else "Yes"
+            for source in (m.mid_price, m.prices, m.last_trade, m.best_ask, m.best_bid):
+                inverse_price = self._decimal_to_float(source.get(inverse))
+                if inverse_price > 0:
+                    return max(0.0, min(1.0, 1.0 - inverse_price))
+
+        return 0.0
+
+    def _snapshot_to_core_market(self, m: MarketSnapshot) -> Market:
+        """Adaptar MarketSnapshot interno al modelo estable usado por estrategias modulares."""
+        tokens = []
+        for outcome in m.outcomes:
+            token_id = str(m.token_ids.get(outcome, ""))
+            price = self._market_price_for_outcome(m, outcome)
+            tokens.append({
+                "outcome": outcome,
+                "token_id": token_id,
+                "tokenId": token_id,
+                "price": price,
+                "best_bid": self._decimal_to_float(m.best_bid.get(outcome)),
+                "best_ask": self._decimal_to_float(m.best_ask.get(outcome)),
+                "mid_price": self._decimal_to_float(m.mid_price.get(outcome)),
+            })
+
+        end_date_iso = None
+        if m.end_date:
+            end_date_iso = m.end_date.isoformat() if hasattr(m.end_date, "isoformat") else str(m.end_date)
+
+        return Market(
+            condition_id=m.market_id or m.condition_id,
+            question=m.question,
+            category=m.category or "Other",
+            tokens=tokens,
+            volume=self._decimal_to_float(m.volume_24h),
+            volume_24h=self._decimal_to_float(m.volume_24h),
+            liquidity=self._decimal_to_float(m.liquidity),
+            active=m.active and not m.closed and not m.resolved,
+            end_date_iso=end_date_iso,
+            description=m.resolution_source,
+        )
+
+    @staticmethod
+    def _strategy_code(strategy_name: str) -> str:
+        return strategy_name.split("_", 1)[0].upper() if strategy_name else "MOD"
+
+    @staticmethod
+    def _confidence_pct(confidence: float) -> int:
+        return max(0, min(99, int(round(confidence * 100 if confidence <= 1 else confidence))))
+
+    @staticmethod
+    def _clean_metric_value(value: Any) -> Any:
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, dict):
+            return {str(k): StrategyEngine._clean_metric_value(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [StrategyEngine._clean_metric_value(v) for v in value]
+        return str(value)
+
+    def _outcome_for_token(self, m: MarketSnapshot, token_id: str) -> str:
+        for outcome, tid in m.token_ids.items():
+            if str(tid) == str(token_id):
+                return outcome
+        return token_id or "-"
+
+    def _display_edge(self, signal: Signal) -> float:
+        edge = signal.edge
+        if edge >= 0:
+            return edge
+        if signal.strategy_name == "s05_negrisk_rebalancing" and signal.metadata.get("overprice"):
+            return abs(edge)
+        return 0.0
+
+    def _modular_trigger_reason(self, signal: Signal) -> str:
+        edge = self._display_edge(signal)
+        metadata = signal.metadata or {}
+
+        if signal.strategy_name == "s05_negrisk_rebalancing":
+            total = float(metadata.get("total_basket_price", 0) or 0)
+            overprice = float(metadata.get("overprice", 0) or 0)
+            return (
+                f"Canasto multi-resultado YES suma {total:.4f}; sobreprecio {overprice * 100:.2f}%. "
+                "Arbitraje/rebalanceo matemático detectado."
+            )
+        if signal.strategy_name == "s02_weather_noaa":
+            side = metadata.get("side_chosen", "YES")
+            target = metadata.get("target_temp", "N/A")
+            mu = metadata.get("forecast_mu", "N/A")
+            return f"Modelo meteorológico favorece {side}. Umbral: {target}; forecast estimado: {mu}. Edge: {edge * 100:.2f}%."
+        if signal.strategy_name == "s03_nothing_ever_happens":
+            return f"Evento dramático detectado; sesgo histórico anti-dramatismo favorece BUY NO. Edge: {edge * 100:.2f}%."
+        if signal.strategy_name == "s10_yes_bias":
+            viral = "viral" if metadata.get("viral_hype") else "alto volumen"
+            return f"YES potencialmente sobrecomprado por narrativa {viral}; estrategia favorece BUY NO. Edge: {edge * 100:.2f}%."
+        if signal.strategy_name == "s12_high_prob_harvesting":
+            return (
+                f"Contrato de alta probabilidad cerca de resolución. Quedan {metadata.get('days_left', 'N/A')} días; "
+                f"yield anualizado estimado {metadata.get('annualized_yield', 'N/A')}."
+            )
+        return f"Señal modular con edge estimado {edge * 100:.2f}%."
+
+    def _modular_signal_to_dashboard(self, m: MarketSnapshot, signal: Signal) -> Optional[Dict]:
+        if not signal.token_id:
+            return None
+
+        confidence = self._confidence_pct(signal.confidence)
+        edge = self._display_edge(signal)
+        expected_profit_bps = int(edge * 10000)
+        strategy_code = self._strategy_code(signal.strategy_name)
+        strategy_label = self.MODULAR_STRATEGY_LABELS.get(signal.strategy_name, signal.strategy_name)
+        token_label = self._outcome_for_token(m, signal.token_id)
+
+        if signal.strategy_name == "s05_negrisk_rebalancing" and signal.metadata.get("recommendation"):
+            outcome = signal.metadata.get("outcome") or token_label
+            token_label = f"NO/{outcome}"
+
+        side = str(signal.side or "BUY").upper()
+        if side not in {"BUY", "SELL", "BOTH", "BUY_BUNDLE", "SELL_BUNDLE"}:
+            side = "BUY"
+
+        urgency = "HIGH" if confidence >= 85 or expected_profit_bps >= 500 else "MEDIUM" if confidence >= 70 else "LOW"
+        metadata = self._clean_metric_value(signal.metadata)
+        dedupe_suffix = token_label.replace(" ", "_")
+
+        return {
+            "signal_id": str(uuid.uuid4())[:8],
+            "strategy": strategy_label,
+            "strategy_code": strategy_code,
+            "side": side,
+            "token": token_label,
+            "token_id": signal.token_id,
+            "entry_price": f"{signal.market_price:.4f}",
+            "target_price": f"{max(0.0, min(1.0, signal.estimated_prob)):.4f}",
+            "size": "100",
+            "confidence": confidence,
+            "urgency": urgency,
+            "expected_profit_bps": expected_profit_bps,
+            "estimated_prob": round(signal.estimated_prob, 6),
+            "market_price": round(signal.market_price, 6),
+            "edge": round(edge, 6),
+            "trigger_reason": self._modular_trigger_reason(signal),
+            "status": "ACTIVE",
+            "dedupe_key": f"{strategy_code}:{m.market_id}:{dedupe_suffix}:{side}",
+            "metrics": {
+                "strategy_name": signal.strategy_name,
+                "strategy_id": strategy_code,
+                "token_id": signal.token_id,
+                "estimated_prob": round(signal.estimated_prob, 6),
+                "market_price": round(signal.market_price, 6),
+                "edge_pct": round(edge * 100, 3),
+                "metadata": metadata,
+            },
+        }
+
+    def _calculate_modular_strategies(self, m: MarketSnapshot) -> List[Dict]:
+        core_market = self._snapshot_to_core_market(m)
+        signals: List[Dict] = []
+
+        for strategy in self.modular_strategies:
+            try:
+                for opportunity in strategy.scan([core_market]):
+                    signal = strategy.analyze(opportunity)
+                    if signal:
+                        dashboard_signal = self._modular_signal_to_dashboard(m, signal)
+                        if dashboard_signal:
+                            signals.append(dashboard_signal)
+            except Exception as e:
+                print(f"[Strategy {strategy.name}] Error: {e}")
 
         return signals
 
