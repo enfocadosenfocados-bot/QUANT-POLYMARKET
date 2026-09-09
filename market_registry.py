@@ -421,7 +421,9 @@ class MarketRegistry:
 
             signal["timestamp"] = utc_now().isoformat()
             log_key = signal.get("dedupe_key")
-            if not log_key or not any(s.get("dedupe_key") == log_key for s in self.signals_log[-200:]):
+            # Dedupe sobre TODO el histórico (no solo las últimas 200) para no
+            # re-contar repetidamente la misma señal y no inflar el contador.
+            if not log_key or not any(s.get("dedupe_key") == log_key for s in self.signals_log):
                 self.signals_log.append(signal)
                 if len(self.signals_log) > 1000:
                     self.signals_log = self.signals_log[-1000:]

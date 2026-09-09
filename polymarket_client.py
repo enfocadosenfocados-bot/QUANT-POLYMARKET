@@ -22,6 +22,9 @@ class PolymarketClient:
         self.running = False
         self.subscribed_tokens: List[str] = []
         self._reconnect_delay = 1
+        # Último código HTTP recibido en las llamadas a Gamma (para manejar
+        # el fin de paginación y rate-limits de forma limpia).
+        self._gamma_last_status: Optional[int] = None
 
     @staticmethod
     def _to_decimal(value: Any, default: str = "0") -> Decimal:
@@ -58,31 +61,62 @@ class PolymarketClient:
             resp = await self.http.get(url, params=params)
             latency = int((time.time() - start) * 1000)
             registry.system_stats["api_latency_ms"] = latency
+            self._gamma_last_status = resp.status_code
 
             if resp.status_code == 200:
                 data = resp.json()
                 return data if isinstance(data, list) else data.get("markets", [])
-            else:
-                print(f"[Gamma] Error {resp.status_code}: {resp.text[:200]}")
+            if resp.status_code == 422:
+                # Fin de paginación alcanzado (la API exige keyset más allá del
+                # offset máximo). Es un fin normal, no se loguea como error.
                 return []
+            print(f"[Gamma] Error {resp.status_code}: {resp.text[:200]}")
+            return []
         except Exception as e:
+            self._gamma_last_status = None
             print(f"[Gamma] Exception: {e}")
             return []
 
     async def fetch_all_active_markets(self) -> List[Dict]:
-        """Obtener todos los mercados activos con paginación"""
-        all_markets = []
+        """Obtener todos los mercados activos con paginación robusta.
+
+        - El offset de Gamma está limitado: al llegar a su tope devuelve HTTP 422
+          ("offset too large"), que se trata como fin normal de los datos paginables
+          y detiene la consulta en silencio (evita spamear el log cada ciclo).
+        - Ante rate-limit (429) o errores temporales (5xx) reintenta con backoff
+          exponencial en lugar de fallar y volver a empezar.
+        """
+        all_markets: List[Dict] = []
         offset = 0
+        consecutive_errors = 0
         while True:
             markets = await self.fetch_markets(limit=100, offset=offset)
-            if not markets:
+            status = self._gamma_last_status
+
+            if markets:
+                all_markets.extend(markets)
+                consecutive_errors = 0
+                if len(markets) < 100:
+                    break
+                offset += 100
+            else:
+                if status == 429 or (status is not None and status >= 500):
+                    # Rate-limit o error temporal: reintentar con backoff.
+                    consecutive_errors += 1
+                    if consecutive_errors >= 3:
+                        break
+                    await asyncio.sleep(2 * consecutive_errors)
+                    continue
+                # HTTP 422 (fin de paginación) u otro error no recuperable: parar.
                 break
-            all_markets.extend(markets)
-            if len(markets) < 100:
-                break
-            offset += 100
-            await asyncio.sleep(0.5)  # Rate limiting respetuoso
-        print(f"[Gamma] Total mercados activos: {len(all_markets)}")
+
+            await asyncio.sleep(0.4)  # Rate limiting respetuoso entre páginas
+
+        if all_markets:
+            print(f"[Gamma] Total mercados activos: {len(all_markets)}")
+        else:
+            # Evita spamear cuando Gamma sigue limitando.
+            print("[Gamma] No se obtuvieron mercados en este ciclo.")
         return all_markets
 
     async def fetch_market_detail(self, market_id: str) -> Optional[Dict]:
