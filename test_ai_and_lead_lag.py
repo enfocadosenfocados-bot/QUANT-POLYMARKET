@@ -46,9 +46,10 @@ def test_lead_lag_engine():
     print(f"  -> Oportunidades detectadas: {len(opps)}")
     assert len(opps) >= 1, "Debería detectar oportunidad por breakout en Binance antes del CLOB"
     opp = opps[0]
-    print(f"  -> Opp ID: {opp.id} | Outcome: {opp.outcome} | Edge: {opp.edge_pct}% | Latencia: {opp.latency_advantage_ms}ms")
     assert opp.edge_pct > 8.0, "El edge matemático debe superar el 8%"
-    print("  [OK] Motor Lead-Lag validado exitosamente.\n")
+    assert opp.status == "EXECUTED_AUTO", f"La oportunidad debe ejecutarse de forma 100% automática, obtenido {opp.status}"
+    print(f"  -> Disparo 100% Autónomo: Status = {opp.status}")
+    print("  [OK] Motor Lead-Lag y Auto-Sniper validados exitosamente.\n")
 
 
 def test_ai_learning_murphy():

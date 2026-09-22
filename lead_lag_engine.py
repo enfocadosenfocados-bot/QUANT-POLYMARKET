@@ -72,6 +72,7 @@ class LeadLagEngine:
             "SOL": [],
         }
         self.history_window_sec = 60.0
+        self.auto_snipe = True  # Ejecución 100% automática sin requerir interacción manual
         self.active_opportunities: List[LeadLagOpportunity] = []
         self.opportunities_history: List[LeadLagOpportunity] = []
         self.last_ws_message_time = 0.0
@@ -280,6 +281,54 @@ class LeadLagEngine:
 
                 logger.info(f"⚡ [LEAD-LAG] Oportunidad detectada: {opp.symbol} {opp.outcome} | Edge: {opp.edge_pct}% | Binance: {spot_price} (Δ10s: {vel_10s:+.2f}%) | CLOB: {clob_ask}")
 
+                # Disparo 100% automático sin requerir pulsar ningún botón
+                if self.auto_snipe:
+                    self._auto_execute_snipe(opp)
+
+    def _auto_execute_snipe(self, opp: LeadLagOpportunity):
+        """Ejecuta automáticamente la orden sin intervención manual del usuario."""
+        try:
+            from paper_tracker import paper_tracker
+            from live_execution import live_manager
+
+            fake_market = {
+                "market_id": opp.target_market_id,
+                "question": opp.market_question,
+                "category": "Crypto",
+                "condition_id": opp.condition_id,
+                "liquidity": 25000.0,
+                "volume_24h": 75000.0,
+                "end_date_iso": None,
+                "mid_price": {"Yes": opp.clob_price, "No": round(1.0 - opp.clob_price, 3)},
+                "prices": {"Yes": opp.clob_price, "No": round(1.0 - opp.clob_price, 3)},
+            }
+            signal = {
+                "signal_id": opp.id,
+                "strategy": "Lead-Lag Latency Sniping",
+                "strategy_code": "LL_SNIPER",
+                "token": opp.outcome,
+                "side": "BUY",
+                "confidence": 92.0,
+                "edge": round(opp.edge_pct / 100.0, 3),
+                "entry_price": opp.clob_price,
+                "market_price": opp.clob_price,
+                "market_question": opp.market_question,
+                "market_category": "Crypto",
+                "target_price": opp.implied_fair_price,
+                "stop_loss": round(opp.clob_price * 0.94, 3),
+                "timestamp": opp.detected_at,
+                "dedupe_key": f"LL:{opp.target_market_id}:{opp.outcome}:{int(opp.detected_at // 30)}",
+            }
+            paper_tracker.record_signal(signal, fake_market)
+            opp.status = "EXECUTED_AUTO"
+
+            if live_manager.is_live and not live_manager.kill_switch_active:
+                asyncio.create_task(live_manager.execute_order(signal))
+
+            logger.info(f"⚡ [AUTO-SNIPER 100% AUTOMÁTICO] Posición abierta: {opp.symbol} {opp.outcome} @ ${opp.clob_price} | Edge: +{opp.edge_pct}%")
+        except Exception as e:
+            logger.error(f"Error en auto-snipe: {e}")
+
     async def _run_polymarket_matcher(self):
         """Mantiene actualizados los contratos de cripto flash de Polymarket."""
         while self.running:
@@ -365,6 +414,7 @@ class LeadLagEngine:
             "recent_history": [asdict(o) for o in self.opportunities_history[:15]],
             "tracked_markets_count": len(self.tracked_polymarket_contracts),
             "tracked_markets": self.tracked_polymarket_contracts,
+            "auto_snipe": self.auto_snipe,
         }
 
 

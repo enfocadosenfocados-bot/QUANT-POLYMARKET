@@ -1788,13 +1788,13 @@
                                 Motor de alta frecuencia que explota el <strong>desfase temporal de 2 a 4 segundos</strong> entre el libro de órdenes central de Binance y el ajuste tardío de los creadores de mercado en el CLOB de Polymarket en contratos Flash (BTC, ETH, SOL).
                             </div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); padding: 6px 12px; font-weight: 800;">
+                                ⚡ AUTO-SNIPER: ACTIVO (100% Autónomo)
+                            </span>
                             <span class="badge" id="ll-ws-badge" style="background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); padding: 6px 12px; font-weight: 700;">
                                 🟢 BINANCE WS: CONECTADO
                             </span>
-                            <button class="btn-action" onclick="fetchLeadLag()" style="background: #f59e0b; color: #000; font-weight: 800;">
-                                🔄 Actualizar Ticks
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1912,9 +1912,12 @@
                                 Sistema de auto-mejora continua: Descompone matemáticamente la precisión con el <strong>Brier Score de Murphy</strong> (Fiabilidad vs Resolución), aplica <strong>Regresión Isotónica (PAVA)</strong> para re-calibrar probabilidades y reajusta diariamente la <strong>ponderación de Kelly</strong> por algoritmo según su desempeño empírico.
                             </div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="btn-action" id="btn-trigger-ai-opt" onclick="triggerAIOptimization()" style="background: #a855f7; color: white; font-weight: 800; padding: 8px 16px;">
-                                ⚡ Ejecutar Auto-Aprendizaje y Re-calibrar Kelly
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.45); padding: 6px 12px; font-weight: 800;">
+                                🟢 AUTO-APRENDIZAJE: ACTIVO (Calibración continua automática 24/7)
+                            </span>
+                            <button class="btn-action" id="btn-trigger-ai-opt" onclick="triggerAIOptimization()" style="background: rgba(168, 85, 247, 0.2); border: 1px solid #a855f7; color: #d8b4fe; font-weight: 700; padding: 6px 12px;" title="El bot se calibra automáticamente; este botón es solo por si deseas forzarlo inmediatamente">
+                                ⚡ Forzar Calibración (Manual)
                             </button>
                         </div>
                     </div>
@@ -3332,9 +3335,9 @@
                             <td><span class="badge" style="background: rgba(245,158,11,0.15); color: #fbbf24;">⚡ ${o.latency_advantage_ms} ms</span></td>
                             <td style="font-size: 0.74rem; color: var(--text-muted);">${o.expiration_seconds}s</td>
                             <td>
-                                <button class="btn-action" style="background: #22c55e; color: #000; font-weight: 800;" onclick="executeLeadLagSnipe('${o.id}')">
-                                    🎯 Snipe
-                                </button>
+                                ${o.status === 'EXECUTED_AUTO' || o.status === 'EXECUTED'
+                                    ? '<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80; font-weight: 800;">⚡ AUTO-DISPARADO</span>'
+                                    : `<button class="btn-action" style="background: #22c55e; color: #000; font-weight: 800;" onclick="executeLeadLagSnipe('${o.id}')">🎯 Snipe</button>`}
                             </td>
                         </tr>`;
                     }).join('');

@@ -214,8 +214,8 @@ class PaperTradingEngine:
 
         # Regla de Rotación Continua de Capital:
         # 1. Confianza >= 75% (Ultra)
-        # 2. Horizonte Flash (<48h) O Estrategias intradía de alta velocidad (S20, S24, S22, BA)
-        is_fast_strategy = signal.get("strategy_code") in ("S20", "S24", "S22", "BA")
+        # 2. Horizonte Flash (<48h) O Estrategias intradía de alta velocidad (S20, S24, S22, BA, LL_SNIPER)
+        is_fast_strategy = signal.get("strategy_code") in ("S20", "S24", "S22", "BA", "LL_SNIPER")
         is_flash_horizon = horizon_info["code"] == "flash" or to_float(horizon_info.get("hours_left"), 999) <= 48.0
 
         is_sniper = (
@@ -279,6 +279,8 @@ class PaperTradingEngine:
         self.trades[trade_key] = new_trade
         self.save_to_disk()
         return new_trade
+
+    record_signal = evaluate_and_record_signal
 
     def update_live_prices(self, market_registry):
         """Actualiza precios y ejecuta Trailing Stop dinámico y Break-even."""

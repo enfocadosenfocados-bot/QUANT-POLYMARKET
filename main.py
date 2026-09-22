@@ -47,6 +47,7 @@ wallet_stats_cache: Dict[str, Dict[str, Any]] = {}
 async def lifespan(app: FastAPI):
     print("[STARTUP] Iniciando QUANT POLYMARKET...")
     lead_lag_engine.start()
+    ai_learning_engine.start()
     news_oracle_agent.start()
     tasks = [
         asyncio.create_task(gamma_polling_task()),
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI):
     finally:
         print("[SHUTDOWN] Cerrando scanner...")
         lead_lag_engine.stop()
+        ai_learning_engine.stop()
         news_oracle_agent.stop()
         await pm_client.close()
         for task in background_tasks:

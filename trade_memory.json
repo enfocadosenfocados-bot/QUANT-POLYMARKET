@@ -1,6 +1,58 @@
 {
-  "updated_at": 1790118304.4938366,
+  "updated_at": 1790119424.4977763,
   "reflections": [
+    {
+      "id": "REFL-1790119417835",
+      "trade_id": "T-LOST-1",
+      "strategy_id": "S20",
+      "market_title": "Will Oracle resolve at 5pm?",
+      "predicted_prob": 0.96,
+      "outcome": 0,
+      "pnl": -92.0,
+      "brier_error": 0.9216,
+      "root_cause": "Resolución con retardo del oráculo o disputa UMA no anticipada.",
+      "actionable_rule": "Aumentar margen de seguridad a 98% y verificar oráculo UMA antes de entrar.",
+      "created_at": 1790119417.8358307
+    },
+    {
+      "id": "REFL-1790119408784",
+      "trade_id": "T-LOST-1",
+      "strategy_id": "S20",
+      "market_title": "Will Oracle resolve at 5pm?",
+      "predicted_prob": 0.96,
+      "outcome": 0,
+      "pnl": -92.0,
+      "brier_error": 0.9216,
+      "root_cause": "Resolución con retardo del oráculo o disputa UMA no anticipada.",
+      "actionable_rule": "Aumentar margen de seguridad a 98% y verificar oráculo UMA antes de entrar.",
+      "created_at": 1790119408.7843158
+    },
+    {
+      "id": "REFL-1790119142268",
+      "trade_id": "1790119142.2681005",
+      "strategy_id": "UNKNOWN",
+      "market_title": "Mercado Desconocido",
+      "predicted_prob": 76.0,
+      "outcome": 0,
+      "pnl": 0.0,
+      "brier_error": 5776.0,
+      "root_cause": "Divergencia de mercado estándar",
+      "actionable_rule": "Mantener monitorización habitual.",
+      "created_at": 1790119142.2681105
+    },
+    {
+      "id": "REFL-1790119142267",
+      "trade_id": "1790119142.267024",
+      "strategy_id": "UNKNOWN",
+      "market_title": "Mercado Desconocido",
+      "predicted_prob": 95.0,
+      "outcome": 0,
+      "pnl": 0.0,
+      "brier_error": 9025.0,
+      "root_cause": "Divergencia de mercado estándar",
+      "actionable_rule": "Mantener monitorización habitual.",
+      "created_at": 1790119142.2670505
+    },
     {
       "id": "REFL-1790118268842",
       "trade_id": "1790118268.8426213",
@@ -209,11 +261,11 @@
       "status": "OPTIMAL"
     },
     "GENERIC": {
-      "brier_score": 9025.0,
+      "brier_score": 7400.5,
       "win_rate": 0.0,
-      "trades_count": 1,
+      "trades_count": 2,
       "kelly_multiplier": 0.4,
-      "reliability": 9025.0,
+      "reliability": 7310.25,
       "resolution": 0.0,
       "status": "REDUCED"
     }

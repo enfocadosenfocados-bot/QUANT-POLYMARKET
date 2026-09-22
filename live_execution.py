@@ -30,6 +30,10 @@ class LiveExecutionManager:
         self.kill_switch_active: bool = False
         self.load_credentials()
 
+    @property
+    def is_live(self) -> bool:
+        return self.mode == "LIVE"
+
     def load_credentials(self):
         if CREDENTIALS_FILE.exists():
             try:

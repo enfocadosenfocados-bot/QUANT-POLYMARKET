@@ -25,6 +25,7 @@ import os
 import json
 import time
 import math
+import asyncio
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
@@ -133,7 +134,34 @@ class AILearningEngine:
         self.global_murphy: Optional[MurphyDecomposition] = None
         self.last_calibration_time = 0.0
         self.daily_loop_running = False
+        self._task: Optional[asyncio.Task] = None
         self._load_memory()
+
+    def start(self):
+        """Inicia el bucle de auto-aprendizaje continuo 100% autónomo."""
+        if self.daily_loop_running:
+            return
+        self.daily_loop_running = True
+        self._task = asyncio.create_task(self._run_auto_learning_loop())
+        logger.info("Motor de Auto-Aprendizaje IA continuo iniciado (100% autónomo).")
+
+    def stop(self):
+        """Detiene el bucle de auto-aprendizaje."""
+        self.daily_loop_running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+        logger.info("Motor de Auto-Aprendizaje IA detenido.")
+
+    async def _run_auto_learning_loop(self):
+        """Bucle en segundo plano que ejecuta la calibración y reajuste de Kelly de forma automática cada 60s."""
+        while self.daily_loop_running:
+            try:
+                from paper_tracker import paper_tracker
+                closed_trades = [t for t in paper_tracker.trades.values() if t.get("status") in ("WON", "LOST")]
+                self.run_daily_calibration(closed_trades)
+            except Exception as e:
+                logger.error(f"Error en bucle auto_learning: {e}")
+            await asyncio.sleep(60.0)
 
     def _load_memory(self):
         """Carga el registro histórico de reflexiones y calibraciones previas."""
@@ -283,6 +311,13 @@ class AILearningEngine:
 
         self._save_memory()
         logger.info(f"🧠 [IA REFLEXIÓN] Trade {trade_id} ({strategy_id}): {root_cause} | Regla: {actionable_rule}")
+        # Disparo inmediato de auto-recalibración 100% automático al registrar una nueva reflexión
+        try:
+            from paper_tracker import paper_tracker
+            all_closed = [t for t in paper_tracker.trades.values() if t.get("status") in ("WON", "LOST")]
+            self.run_daily_calibration(all_closed)
+        except Exception:
+            pass
         return reflection
 
     def run_daily_calibration(self, closed_trades: List[Dict[str, Any]]) -> Dict[str, Any]:
