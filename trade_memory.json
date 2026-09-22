@@ -1,5 +1,5 @@
 {
-  "updated_at": 1790119782.4720225,
+  "updated_at": 1790121012.0634255,
   "reflections": [
     {
       "id": "REFL-1790119779772",
@@ -19,10 +19,10 @@
       "trade_id": "1790119776.227061",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 95.0,
+      "predicted_prob": 0.95,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 9025.0,
+      "brier_error": 0.9025,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790119776.22707
@@ -45,10 +45,10 @@
       "trade_id": "1790119749.7298079",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 95.0,
+      "predicted_prob": 0.95,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 9025.0,
+      "brier_error": 0.9025,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790119749.7298172
@@ -84,10 +84,10 @@
       "trade_id": "1790119142.2681005",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 76.0,
+      "predicted_prob": 0.76,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 5776.0,
+      "brier_error": 0.5776,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790119142.2681105
@@ -97,10 +97,10 @@
       "trade_id": "1790119142.267024",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 95.0,
+      "predicted_prob": 0.95,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 9025.0,
+      "brier_error": 0.9025,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790119142.2670505
@@ -110,10 +110,10 @@
       "trade_id": "1790118268.8426213",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 95.0,
+      "predicted_prob": 0.95,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 9025.0,
+      "brier_error": 0.9025,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790118268.8426313
@@ -123,10 +123,10 @@
       "trade_id": "1790118259.740691",
       "strategy_id": "UNKNOWN",
       "market_title": "Mercado Desconocido",
-      "predicted_prob": 95.0,
+      "predicted_prob": 0.95,
       "outcome": 0,
       "pnl": 0.0,
-      "brier_error": 9025.0,
+      "brier_error": 0.9025,
       "root_cause": "Divergencia de mercado estándar",
       "actionable_rule": "Mantener monitorización habitual.",
       "created_at": 1790118259.740701
@@ -313,11 +313,11 @@
       "status": "OPTIMAL"
     },
     "GENERIC": {
-      "brier_score": 9025.0,
+      "brier_score": 0.9025,
       "win_rate": 0.0,
       "trades_count": 1,
       "kelly_multiplier": 0.4,
-      "reliability": 9025.0,
+      "reliability": 0.9025,
       "resolution": 0.0,
       "status": "REDUCED"
     }

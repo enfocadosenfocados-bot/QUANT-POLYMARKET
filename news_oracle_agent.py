@@ -51,7 +51,7 @@ class NewsOracleAgent:
         self.catalysts: List[NewsCatalyst] = []
         self._task: Optional[asyncio.Task] = None
         self.rss_sources = [
-            {"name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
+            {"name": "GoogleNews", "url": "https://news.google.com/rss/search?q=bitcoin+OR+crypto+OR+polymarket+OR+federal+reserve&hl=en-US&gl=US&ceid=US:en"},
             {"name": "Cointelegraph", "url": "https://cointelegraph.com/rss"},
             {"name": "Decrypt", "url": "https://decrypt.co/feed"},
         ]
@@ -60,9 +60,10 @@ class NewsOracleAgent:
             "BITCOIN": ["bitcoin", "btc", "satoshi"],
             "ETHEREUM": ["ethereum", "eth", "vitalik"],
             "SOLANA": ["solana", "sol"],
-            "FED_RATES": ["fed", "federal reserve", "powell", "rate cut", "interest rate", "cpi", "inflation"],
-            "ETF_APPROVAL": ["etf", "sec", "gensler", "approval", "rejection"],
-            "ELECTIONS": ["trump", "kamala", "harris", "biden", "election", "presidential", "polls"],
+            "CRYPTO_MACRO": ["crypto", "cryptocurrency", "altcoin", "doge", "dogecoin", "xrp", "polymarket"],
+            "FED_RATES": ["fed", "federal reserve", "powell", "rate cut", "rate hike", "interest rate", "cpi", "inflation", "fomc"],
+            "ETF_APPROVAL": ["etf", "sec", "gensler", "approval", "approve", "rejection", "reject", "etp"],
+            "ELECTIONS": ["trump", "kamala", "harris", "biden", "election", "elections", "president", "presidential", "polls", "vote"],
         }
 
     def start(self):
@@ -79,15 +80,21 @@ class NewsOracleAgent:
         logger.info("Agente IA Evaluador de Noticias detenido.")
 
     def _calculate_sentiment(self, text: str) -> float:
-        """Heurística léxica rápida de polaridad en noticias financieras."""
+        """Heurística léxica avanzada de polaridad en noticias financieras."""
         text_lower = text.lower()
         bullish_words = [
-            "surge", "soar", "jump", "record high", "approve", "approved", "approval",
-            "bullish", "win", "wins", "lead", "gains", "skyrocket", "positive", "cut rate", "rally"
+            "surge", "surges", "soar", "soars", "jump", "jumps", "record", "records", "record high", 
+            "approve", "approved", "approval", "approves", "bullish", "win", "wins", "lead", "leads", 
+            "gains", "gain", "skyrocket", "skyrockets", "positive", "cut rate", "rate cut", "cuts rate",
+            "rally", "rallies", "breakout", "breaks out", "ath", "all-time high", "support", "inflow", 
+            "inflows", "passes", "passed", "expands", "milestone"
         ]
         bearish_words = [
-            "plunge", "crash", "tumble", "dump", "reject", "rejected", "rejection",
-            "bearish", "lose", "loses", "lawsuit", "delay", "probe", "hacked", "sec sues", "inflation up"
+            "plunge", "plunges", "crash", "crashes", "tumble", "tumbles", "dump", "dumps", 
+            "reject", "rejected", "rejection", "rejects", "bearish", "lose", "loses", "lawsuit", 
+            "delay", "delays", "probe", "probes", "investigation", "hacked", "hack", "sec sues", 
+            "inflation up", "rate hike", "hikes", "hike", "drops", "drop", "falls", "fall", 
+            "slide", "slides", "dip", "dips", "outflow", "outflows"
         ]
 
         score = 0.0

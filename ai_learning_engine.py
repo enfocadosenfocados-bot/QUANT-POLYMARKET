@@ -170,6 +170,10 @@ class AILearningEngine:
                 with open(TRADE_MEMORY_PATH, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     for item in data.get("reflections", []):
+                        if item.get("predicted_prob", 0.0) > 1.0:
+                            item["predicted_prob"] = round(item["predicted_prob"] / 100.0, 3)
+                        item["predicted_prob"] = max(0.01, min(0.99, item.get("predicted_prob", 0.50)))
+                        item["brier_error"] = round((item["predicted_prob"] - item.get("outcome", 0)) ** 2, 4)
                         self.reflections.append(TradeReflection(**item))
                     self.strategy_weights = data.get("strategy_weights", {})
                     logger.info(f"Cargadas {len(self.reflections)} reflexiones de IA desde {TRADE_MEMORY_PATH}")
@@ -259,6 +263,9 @@ class AILearningEngine:
         pnl = float(trade.get("pnl", 0.0))
         entry_price = float(trade.get("entry_price", 0.50))
         predicted_prob = float(trade.get("confidence", 0.80))
+        if predicted_prob > 1.0:
+            predicted_prob /= 100.0
+        predicted_prob = max(0.01, min(0.99, predicted_prob))
         strategy_id = trade.get("strategy_id", "UNKNOWN")
         market_title = trade.get("market_title", "Mercado Desconocido")
         trade_id = trade.get("id", str(time.time()))
@@ -337,6 +344,9 @@ class AILearningEngine:
 
         for tr in effective_trades:
             prob = float(tr.get("confidence", 0.75))
+            if prob > 1.0:
+                prob = prob / 100.0
+            prob = max(0.01, min(0.99, prob))
             pnl = float(tr.get("pnl", 0.0))
             strat = tr.get("strategy_id", "GENERIC")
             outcome = 1 if pnl > 0 else 0
