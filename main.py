@@ -25,6 +25,8 @@ from config import (
 from market_registry import registry
 from polymarket_client import pm_client
 from strategies import engine
+from paper_tracker import paper_tracker
+from live_execution import live_manager
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -671,6 +673,8 @@ async def strategy_calculation_task():
                 # Limpiar señales viejas
                 m.signals = [s for s in m.signals if s.get("status") == "ACTIVE"]
                 for sig in signals:
+                    # Evaluar si la señal es Top Sniper y registrar en Paper Tracker
+                    paper_tracker.evaluate_and_record_signal(sig, m)
                     # Evitar duplicados recientes
                     sig_key = sig.get("dedupe_key") or f"{sig.get('strategy_code')}:{sig.get('token')}:{sig.get('side')}"
                     existing = [
@@ -682,6 +686,8 @@ async def strategy_calculation_task():
                     else:
                         await registry.add_signal(m.market_id, sig)
 
+            # Actualizar precios en vivo para las posiciones abiertas de Paper Trading
+            paper_tracker.update_live_prices(registry)
             registry.system_stats["strategy_diagnostics"] = build_strategy_diagnostics()
 
             # Broadcast a todos los clientes del dashboard
@@ -690,6 +696,9 @@ async def strategy_calculation_task():
                 "stats": {**registry.system_stats, "markets_tracked": len(registry.markets)},
                 "markets_count": len(registry.markets),
                 "active_signals": len(registry.get_active_signals()),
+                "track_record": paper_tracker.get_summary(),
+                "strategy_performance": paper_tracker.get_strategy_performance(),
+                "trading_mode": live_manager.get_public_status(),
             })
 
         except Exception as e:
@@ -843,6 +852,115 @@ async def get_arbitrage_opportunities():
                     })
 
     return {"opportunities": sorted(opportunities, key=lambda x: x["profit"], reverse=True)}
+
+
+@app.get("/api/top-signals")
+async def get_top_signals(
+    min_confidence: int = Query(default=75, ge=40, le=99),
+    category: str | None = None,
+    horizon: str | None = "flash",
+):
+    """Obtener señales filtradas de máxima probabilidad (Sniper) con Kelly Sizing y Horizonte Flash por defecto."""
+    signals = registry.get_active_signals()
+    top = []
+    for s in signals:
+        conf = float(s.get("confidence") or 0)
+        edge = float(s.get("edge") or 0)
+        entry = float(s.get("entry_price") or 0)
+
+        # Filtros de alta probabilidad
+        if conf >= min_confidence and 0.02 < entry < 0.98:
+            target = float(s.get("target_price") or 0)
+            stop = float(s.get("stop_loss") or 0)
+            if stop <= 0:
+                stop = max(0.01, entry * 0.92)
+                s["stop_loss"] = f"{stop:.4f}"
+            if target <= 0:
+                target = min(0.99, entry + max(0.04, edge if edge > 0 else 0.05))
+                s["target_price"] = f"{target:.4f}"
+
+            risk = abs(entry - stop)
+            reward = abs(target - entry)
+            s["risk_reward_ratio"] = round(reward / risk, 2) if risk > 0 else 1.5
+            s["recommended_order_type"] = "LIMIT (Maker)"
+            s["recommended_limit_price"] = f"{entry:.4f}"
+
+            if category and (s.get("market_category") or "Other").lower() != category.lower():
+                continue
+            if horizon and horizon.lower() != "all" and str(s.get("horizon") or "").lower() != horizon.lower():
+                continue
+            top.append(s)
+
+    top.sort(key=lambda x: (float(x.get("confidence") or 0), float(x.get("edge") or 0)), reverse=True)
+    return {
+        "top_signals": top[:100],
+        "total": len(top),
+        "filter_criteria": {
+            "min_confidence": min_confidence,
+            "min_risk_reward": "1.3:1",
+            "order_type": "LIMIT",
+            "slippage_protection": "Active",
+            "horizon": horizon or "All",
+        }
+    }
+
+
+@app.get("/api/track-record")
+async def get_track_record():
+    """Métricas y posiciones en vivo del Track Record (Paper Trading)."""
+    paper_tracker.update_live_prices(registry)
+    return paper_tracker.get_summary()
+
+
+@app.get("/api/strategy-performance")
+async def get_strategy_performance():
+    """Rendimiento y desglose de PnL flotante y realizado por cada estrategia cuantitativa."""
+    paper_tracker.update_live_prices(registry)
+    return paper_tracker.get_strategy_performance()
+
+
+@app.post("/api/track-record/reset")
+async def reset_track_record():
+    """Reiniciar el track record de paper trading."""
+    paper_tracker.reset_track_record()
+    return {"message": "Track record reiniciado con éxito", "summary": paper_tracker.get_summary()}
+
+
+@app.get("/api/settings/trading-mode")
+async def get_trading_mode():
+    """Obtener estado del modo de operativa (Paper vs Live) y credenciales."""
+    return live_manager.get_public_status()
+
+
+@app.post("/api/settings/trading-mode")
+async def set_trading_mode(payload: Dict[str, Any]):
+    """Cambiar modo entre PAPER y LIVE con validación de seguridad."""
+    mode = str(payload.get("mode", "PAPER"))
+    res = live_manager.set_mode(mode)
+    return res
+
+
+@app.get("/api/settings/credentials")
+async def get_credentials():
+    """Obtener estado de configuración de credenciales CLOB."""
+    return live_manager.get_public_status()
+
+
+@app.post("/api/settings/credentials")
+async def update_credentials(payload: Dict[str, Any]):
+    """Guardar credenciales de Polymarket CLOB."""
+    live_manager.save_credentials(payload)
+    return {"success": True, "status": live_manager.get_public_status()}
+
+
+@app.post("/api/live/kill-switch")
+async def toggle_kill_switch():
+    """Activar / Desactivar botón de pánico (Kill Switch) para detener toda orden real."""
+    if live_manager.kill_switch_active:
+        res = live_manager.deactivate_kill_switch()
+    else:
+        res = live_manager.activate_kill_switch()
+    return res
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

@@ -17,6 +17,7 @@ ENV/
 # Local config / secrets
 .env
 .env.*
+clob_credentials.json
 *.pem
 *.key
 *.p12

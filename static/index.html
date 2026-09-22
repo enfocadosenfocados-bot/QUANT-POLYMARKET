@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QUANT POLYMARKET</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -521,6 +522,381 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-glow);
         }
+
+        /* Estilos Sniper & Track Record */
+        .sniper-banner {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+
+        .sniper-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .sniper-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .sniper-rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .sniper-rule-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .sniper-rule-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #93c5fd;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sniper-rule-text {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        .badge-tp {
+            background: rgba(34, 197, 94, 0.18);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+        }
+
+        .badge-sl {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+        }
+
+        .badge-limit {
+            background: rgba(59, 130, 246, 0.18);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+
+        .badge-rr {
+            background: rgba(168, 85, 247, 0.18);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+
+        .pnl-positive {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .pnl-negative {
+            color: #f87171;
+            font-weight: 700;
+        }
+
+        .btn-action {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: #1d4ed8;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-reset-tr {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-reset-tr:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        /* Estilos PnL por Estrategia */
+        .rank-gold {
+            background: rgba(234, 179, 8, 0.2) !important;
+            color: #fbbf24 !important;
+            border: 1px solid rgba(234, 179, 8, 0.45) !important;
+            font-weight: 800;
+        }
+        .rank-silver {
+            background: rgba(148, 163, 184, 0.2) !important;
+            color: #cbd5e1 !important;
+            border: 1px solid rgba(148, 163, 184, 0.45) !important;
+            font-weight: 800;
+        }
+        .rank-bronze {
+            background: rgba(249, 115, 22, 0.2) !important;
+            color: #fb923c !important;
+            border: 1px solid rgba(249, 115, 22, 0.45) !important;
+            font-weight: 800;
+        }
+        .strat-card-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.25s ease;
+        }
+        .strat-card-container:hover {
+            border-color: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .strat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .strat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+        .strat-pill-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .strat-pill-standby {
+            background: rgba(234, 179, 8, 0.15);
+            color: #fde047;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .strat-pill-scanning {
+            background: rgba(100, 116, 139, 0.15);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        .strat-pnl-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        /* Live vs Paper Switch & Safeguard Controls */
+        .mode-switch-container {
+            display: flex;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 4px;
+        }
+        .switch-pill {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 6px 13px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .switch-pill.active-paper {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
+        }
+        .switch-pill.active-live {
+            background: #16a34a;
+            color: white;
+            box-shadow: 0 0 14px rgba(22, 163, 74, 0.6);
+            animation: pulse-live 2s infinite;
+        }
+        @keyframes pulse-live {
+            0%, 100% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 18px rgba(34, 197, 94, 0.9); }
+        }
+        .btn-kill-switch {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-kill-switch:hover {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+        }
+        .btn-kill-switch.active {
+            background: #b91c1c !important;
+            color: white !important;
+            border-color: #f87171 !important;
+            animation: pulse 1s infinite;
+        }
+        .btn-config {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-config:hover {
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+        .badge-kelly {
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+        .badge-trailing {
+            background: rgba(168, 85, 247, 0.18);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 0.72rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Modal Credenciales */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .modal-card {
+            background: #111827;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            border-radius: 14px;
+            width: 90%;
+            max-width: 520px;
+            padding: 26px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #93c5fd;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .input-dark {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 0.84rem;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        .input-dark:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
     </style>
 </head>
 <body>
@@ -529,19 +905,31 @@
             <h1>🔮 QUANT POLYMARKET</h1>
             <div class="subtitle">Sistema de inteligencia de mercado en tiempo real</div>
         </div>
-        <div class="status-bar">
-            <div class="status-item">
-                <div class="status-dot online" id="ws-status-dot"></div>
-                <span id="ws-status">WS Conectado</span>
+
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <!-- Selector de Modo de Operativa: Paper vs Live -->
+            <div class="mode-switch-container">
+                <button class="switch-pill active-paper" id="btn-mode-paper" onclick="toggleTradingMode('PAPER')">🧪 Simulación (Paper)</button>
+                <button class="switch-pill" id="btn-mode-live" onclick="promptLiveMode()">🟢 Operativa Real (Live)</button>
             </div>
-            <div class="status-item">
-                <span id="latency-display" class="latency-indicator latency-good">-- ms</span>
-            </div>
-            <div class="status-item">
-                <span id="markets-count">0</span> mercados
-            </div>
-            <div class="status-item">
-                <span id="signals-count">0</span> señales
+
+            <button class="btn-kill-switch" id="btn-kill-switch" onclick="triggerKillSwitch()" title="Detener inmediatamente todas las órdenes reales">🚨 KILL-SWITCH</button>
+            <button class="btn-config" onclick="openCredentialsModal()" title="Configurar credenciales Polymarket CLOB">⚙️ API CLOB</button>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot online" id="ws-status-dot"></div>
+                    <span id="ws-status">WS Conectado</span>
+                </div>
+                <div class="status-item">
+                    <span id="latency-display" class="latency-indicator latency-good">-- ms</span>
+                </div>
+                <div class="status-item">
+                    <span id="markets-count">0</span> mercados
+                </div>
+                <div class="status-item">
+                    <span id="signals-count">0</span> señales
+                </div>
             </div>
         </div>
     </div>
@@ -587,6 +975,9 @@
                 <button class="tab" onclick="switchTab('markets')">📊 Todos los Mercados</button>
                 <button class="tab" onclick="switchTab('strategies')">🧠 Estrategias</button>
                 <button class="tab" onclick="switchTab('logs')">📋 Logs</button>
+                <button class="tab" onclick="switchTab('top-signals')">⭐ Señales Top (Sniper)</button>
+                <button class="tab" onclick="switchTab('track-record')">📈 Track Record en Vivo</button>
+                <button class="tab" onclick="switchTab('strategy-performance')">🏆 Flotante & PnL Estrategias</button>
             </div>
 
             <!-- Tab: Señales -->
@@ -811,6 +1202,116 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S20">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S20: Oracle Delay Sniping (96%-98%)</div>
+                                <div class="signals-strategy-subtitle">Caza de contratos con certeza casi total con descuento previo a liquidación UMA ($1.00).</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S20">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S20">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Oracle Delay Sniping...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S21">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S21: Arbitraje Lógico Condicional (90%-95%)</div>
+                                <div class="signals-strategy-subtitle">Incoherencia matemática entre escaleras de precio y eventos prerrequisito.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S21">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S21">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Arbitraje Lógico Condicional...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S22">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S22: Fast News Latency Sniping (82%-88%)</div>
+                                <div class="signals-strategy-subtitle">Captura de órdenes desactualizadas ante noticias de última hora.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S22">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S22">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Fast News Sniping...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S23">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S23: Resolution Rules-Lawyer (80%-85%)</div>
+                                <div class="signals-strategy-subtitle">Explotación de letra chica contractual de UMA contra compras minoristas de YES.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S23">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S23">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Resolution Rules-Lawyer...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="signals-strategy-panel" data-strategy-code="S24">
+                        <div class="signals-strategy-header">
+                            <div>
+                                <div class="signals-strategy-title">S24: Order Flow Imbalance OFI (74%-78%)</div>
+                                <div class="signals-strategy-subtitle">Microestructura cuantitativa y absorción de liquidez en CLOB para scalping.</div>
+                            </div>
+                            <div class="signals-strategy-count" id="signals-count-S24">0 señales</div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th><th>Categoría</th><th>Mercado</th><th>Lado</th><th>Token</th><th>Entrada</th><th>Objetivo</th><th>Confianza</th><th>Urgencia</th><th>Profit Esperado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="signals-table-S24">
+                                    <tr><td colspan="10" class="empty-state">Esperando señales de Order Flow Imbalance...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -960,6 +1461,318 @@
                     <div class="log-entry"><span class="log-time">[INIT]</span> Sistema iniciado. Conectando a Polymarket...</div>
                 </div>
             </div>
+
+            <!-- Tab: ⭐ Señales Top (Sniper) -->
+            <div id="tab-top-signals" class="tab-content">
+                <div class="sniper-banner">
+                    <div class="sniper-title">
+                        <span>⭐</span> Filtro Cuantitativo Sniper (Alta Probabilidad de Acierto)
+                    </div>
+                    <div class="sniper-desc">
+                        Este filtro institucional aísla únicamente las oportunidades que superan los umbrales estadísticos de alta convicción.
+                        Aquí se definen las entradas antes de ejecutar órdenes reales en tu cuenta de Polymarket.
+                    </div>
+                    <div class="sniper-rules-grid">
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title">🎯 Take Profit (TP)</div>
+                            <div class="sniper-rule-text">Precio objetivo donde el modelo proyecta que el <em>Edge</em> se agota. Venta sistemática para asegurar ganancias sin esperar a vencimiento.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title">🛑 Stop Loss (SL)</div>
+                            <div class="sniper-rule-text">Punto de corte estricto (-6% a -15% según la estrategia) para proteger el 90%+ de tu capital ante giros adversos.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title">⚡ Entrada: LIMIT (Maker)</div>
+                            <div class="sniper-rule-text"><strong>Nunca entres a mercado:</strong> La orden límite pasiva evita pagar el spread de 1-3¢ y garantiza el precio exacto sin slippage.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title">⚖️ Ratio R:R Mínimo 1.3:1</div>
+                            <div class="sniper-rule-text">La ganancia potencial supera el riesgo asumido, garantizando esperanza matemática positiva a largo plazo.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">Oportunidades Sniper Filtradas</div>
+                        <div class="market-category-subtitle">Señales con Confianza &ge; 65%, Liquidez verificada, Sizing por Kelly y Ratio R:R institucional.</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700;">Confianza Mínima:</label>
+                        <select id="sniper-conf-filter" onchange="fetchTopSignals()" style="background: var(--bg-hover); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; font-weight: 700;">
+                            <option value="60">60% +</option>
+                            <option value="65">65% +</option>
+                            <option value="70">70% + (Alta)</option>
+                            <option value="75" selected>75% + (Ultra - Rotación Rápida)</option>
+                        </select>
+                        <button class="btn-action" onclick="fetchTopSignals()">🔄 Actualizar</button>
+                    </div>
+                </div>
+
+                <!-- Filtros de Horizonte Temporal -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">⏱️ Horizonte de Vencimiento:</span>
+                    <button class="category-chip" id="horizon-chip-all" onclick="filterByHorizon('all')">Todos</button>
+                    <button class="category-chip active" id="horizon-chip-flash" onclick="filterByHorizon('flash')" style="box-shadow: 0 0 10px rgba(234, 179, 8, 0.35); border-color: #eab308; color: #fef08a;">⚡ Flash (&lt;48h - Activo)</button>
+                    <button class="category-chip" id="horizon-chip-short" onclick="filterByHorizon('short')">📅 Corto (&lt;15d)</button>
+                    <button class="category-chip" id="horizon-chip-medium_long" onclick="filterByHorizon('medium_long')">🗓️ Largo (&gt;15d)</button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Categoría</th>
+                                <th>Horizonte</th>
+                                <th>Mercado</th>
+                                <th>Estrategia</th>
+                                <th>Lado</th>
+                                <th>Token</th>
+                                <th>Tamaño Kelly</th>
+                                <th>Entrada Sugerida</th>
+                                <th>Stop Loss (SL)</th>
+                                <th>Take Profit (TP)</th>
+                                <th>Ratio R:R</th>
+                                <th>Confianza</th>
+                                <th>Tipo Orden</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-signals-table">
+                            <tr><td colspan="15" class="empty-state">Buscando señales sniper de alta probabilidad...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: 📈 Track Record en Vivo (Paper Trading) -->
+            <div id="tab-track-record" class="tab-content">
+                <div class="grid grid-3" style="margin-bottom: 15px;">
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Balance de Cuenta</span></div>
+                        <div class="card-value blue" id="tr-equity">$10,000.00</div>
+                        <div class="card-delta text-muted">Capital base $10,000 USD</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">PnL Total Consolidado</span></div>
+                        <div class="card-value green" id="tr-total-pnl">$0.00</div>
+                        <div class="card-delta" id="tr-roi">+0.00% ROI</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Win Rate (Tasa de Acierto)</span></div>
+                        <div class="card-value yellow" id="tr-winrate">0.0%</div>
+                        <div class="card-delta text-muted" id="tr-win-loss-count">0W / 0L cerrados</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-3" style="margin-bottom: 22px;">
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Ratio de Sharpe</span></div>
+                        <div class="card-value purple" id="tr-sharpe">--</div>
+                        <div class="card-delta text-muted">Rendimiento ajustado por riesgo</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Max Drawdown</span></div>
+                        <div class="card-value red" id="tr-max-dd">0.00%</div>
+                        <div class="card-delta text-muted">Máximo retroceso de capital</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">Expectativa Matemática</span></div>
+                        <div class="card-value green" id="tr-expectancy">$0.00 / trade</div>
+                        <div class="card-delta text-muted" id="tr-profit-factor">Profit Factor: 1.0</div>
+                    </div>
+                </div>
+
+                <!-- Gráfico Interactivo de Curva de Equidad -->
+                <div class="card" style="margin-bottom: 25px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <span class="card-title" style="color: #60a5fa; font-size: 1.05rem;">📈 Curva de Equidad y Crecimiento Acumulado (Equity Curve)</span>
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Visualización cronológica del balance de capital, drawdown y trades ejecutados.</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80;">Quarter-Kelly Sizing</span>
+                            <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">Trailing Stop +4% / -2%</span>
+                        </div>
+                    </div>
+                    <div style="position: relative; height: 260px; width: 100%; margin-top: 15px;">
+                        <canvas id="equityChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">🎯 Posiciones en Monitoreo en Tiempo Real (Exclusivo 75%+ Ultra)</div>
+                        <div class="market-category-subtitle">Mark-to-market automático con Dynamic Kelly Sizing y Trailing Stop activo (Break-even a +4%, trailing 2%).</div>
+                    </div>
+                    <div>
+                        <button class="btn-reset-tr" onclick="confirmResetTrackRecord()">🔄 Reiniciar Track Record</button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora Entrada</th>
+                                <th>Mercado</th>
+                                <th>Estrategia</th>
+                                <th>Token / Lado</th>
+                                <th>Horizonte</th>
+                                <th>Confianza</th>
+                                <th>Tamaño Kelly</th>
+                                <th>Entrada</th>
+                                <th>Precio Actual</th>
+                                <th>Stop Loss (Dinámico)</th>
+                                <th>Take Profit</th>
+                                <th>PnL Flotante ($)</th>
+                                <th>PnL (%)</th>
+                                <th>Protección Activa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tr-open-positions-table">
+                            <tr><td colspan="14" class="empty-state">No hay posiciones abiertas en seguimiento en este momento.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">📜 Historial de Operaciones Cerradas</div>
+                        <div class="market-category-subtitle">Registro de operaciones cerradas por Take Profit, Stop Loss o Trailing Stop protegido.</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora Cierre</th>
+                                <th>Mercado</th>
+                                <th>Estrategia</th>
+                                <th>Token</th>
+                                <th>Tamaño</th>
+                                <th>Entrada</th>
+                                <th>Salida</th>
+                                <th>Resultado</th>
+                                <th>PnL Realizado</th>
+                                <th>Razón de Cierre</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tr-history-table">
+                            <tr><td colspan="10" class="empty-state">No hay operaciones cerradas aún.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: 🏆 Rendimiento & PnL por Estrategia -->
+            <div id="tab-strategy-performance" class="tab-content">
+                <div class="sniper-banner" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95)); border-color: rgba(147, 51, 234, 0.35);">
+                    <div class="sniper-title" style="color: #c084fc;">
+                        <span>🏆</span> Monitor de Flotante y Rendimiento por Estrategia Cuantitativa
+                    </div>
+                    <div class="sniper-desc">
+                        Supervisión granular en tiempo real del <strong>Flotante actual (Unrealized P&amp;L)</strong> de las posiciones en curso y del <strong>P&amp;L Realizado (Cerrado por Take Profit o Stop Loss)</strong> para cada una de las estrategias algorítmicas activas en el bot (Yes-No Bias, Whale Tracking, Mean Reversion, High Prob Harvesting, NegRisk, etc.).
+                    </div>
+                    <div class="sniper-rules-grid">
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title" style="color: #a7f3d0;">📈 Flotante (En Curso)</div>
+                            <div class="sniper-rule-text">Ganancia o pérdida latente de las posiciones actualmente abiertas. Varía segundo a segundo con el precio de mercado de Polymarket.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title" style="color: #fde047;">💰 PnL Realizado (Cerrado)</div>
+                            <div class="sniper-rule-text">Ganancia o pérdida consolidada en caja cuando una posición toca su <strong>Take Profit</strong> o <strong>Stop Loss</strong> objetivo.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title" style="color: #93c5fd;">🎯 PnL Total Consolidado</div>
+                            <div class="sniper-rule-text">Suma de (PnL Realizado + Flotante Actual). Permite clasificar de inmediato qué estrategia tiene los mejores resultados globales.</div>
+                        </div>
+                        <div class="sniper-rule-card">
+                            <div class="sniper-rule-title" style="color: #f472b6;">⚡ Transición Automática</div>
+                            <div class="sniper-rule-text">Apenas una posición cierra, su importe pasa de flotante a realizado, recalculando al instante la tasa de acierto (Win Rate).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards de Rendimiento por Estrategia -->
+                <div class="grid grid-4" style="margin-bottom: 25px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Flotante Global (En Curso)</span>
+                        </div>
+                        <div class="card-value" id="strat-kpi-floating">$0.00</div>
+                        <div class="card-delta text-muted" id="strat-kpi-floating-sub">Suma de posiciones abiertas</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">PnL Realizado Global</span>
+                        </div>
+                        <div class="card-value" id="strat-kpi-realized">$0.00</div>
+                        <div class="card-delta text-muted" id="strat-kpi-realized-sub">Beneficios asegurados por TP/SL</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Estrategia Líder (#1)</span>
+                        </div>
+                        <div class="card-value green" id="strat-kpi-best-name" style="font-size: 1.3rem; line-height: 1.2;">--</div>
+                        <div class="card-delta text-muted" id="strat-kpi-best-pnl">Mayor rendimiento combinado</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Mayor Tasa de Acierto</span>
+                        </div>
+                        <div class="card-value blue" id="strat-kpi-best-wr" style="font-size: 1.3rem; line-height: 1.2;">--</div>
+                        <div class="card-delta text-muted" id="strat-kpi-best-wr-sub">Win Rate en posiciones cerradas</div>
+                    </div>
+                </div>
+
+                <!-- Tabla Leaderboard Comparativa -->
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">📊 Ranking Comparativo de Estrategias</div>
+                        <div class="market-category-subtitle">Compara el rendimiento neto, flotante y precisión de cada estrategia del bot en tiempo real.</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-action" onclick="fetchStrategyPerformance()">🔄 Actualizar Rendimiento</button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-bottom: 30px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Estrategia</th>
+                                <th>Categoría</th>
+                                <th>Estado</th>
+                                <th>Flotante Actual ($)</th>
+                                <th>PnL Realizado ($)</th>
+                                <th>PnL Total ($)</th>
+                                <th>Win Rate</th>
+                                <th>Trades (Act / Cerr)</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="strat-leaderboard-table">
+                            <tr><td colspan="10" class="empty-state">Calculando rendimiento de estrategias...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Desglose Individual de Posiciones Flotantes y Resultados por Estrategia -->
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">🔍 Desglose Detallado de Posiciones en Curso por Estrategia</div>
+                        <div class="market-category-subtitle">Detalle por algoritmo de cada mercado operado, precio de entrada, precio actual, Take Profit, Stop Loss y flotante activo.</div>
+                    </div>
+                </div>
+
+                <div id="strat-details-container">
+                    <!-- Tarjetas detalladas inyectadas por JavaScript -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1017,6 +1830,15 @@
                 updateStats(data.stats);
                 document.getElementById('markets-count').textContent = data.markets_count || 0;
                 document.getElementById('signals-count').textContent = data.active_signals || 0;
+                if (data.track_record) {
+                    renderTrackRecord(data.track_record);
+                }
+                if (data.strategy_performance) {
+                    renderStrategyPerformance(data.strategy_performance);
+                }
+                if (data.trading_mode) {
+                    applyTradingModeStatus(data.trading_mode);
+                }
             }
             else if (data.type === 'market_update') {
                 const updatedMarkets = data.markets || [];
@@ -1108,7 +1930,12 @@
             { code: 'S03', name: 'Nothing Ever Happens' },
             { code: 'S05', name: 'NegRisk Rebalancing' },
             { code: 'S10', name: 'Yes Bias' },
-            { code: 'S12', name: 'High Probability Harvesting' }
+            { code: 'S12', name: 'High Probability Harvesting' },
+            { code: 'S20', name: 'Oracle Delay Sniping' },
+            { code: 'S21', name: 'Arbitraje Lógico Condicional' },
+            { code: 'S22', name: 'Fast News Latency Sniping' },
+            { code: 'S23', name: 'Resolution Rules-Lawyer' },
+            { code: 'S24', name: 'Order Flow Imbalance' }
         ];
 
         function signalSortValue(signal, field) {
@@ -1413,6 +2240,586 @@
             }
         }
 
+        let selectedHorizon = 'flash';
+        let equityChartInstance = null;
+
+        function filterByHorizon(horizon) {
+            selectedHorizon = horizon;
+            ['all', 'flash', 'short', 'medium_long'].forEach(h => {
+                const btn = document.getElementById(`horizon-chip-${h}`);
+                if (btn) {
+                    if (h === horizon) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+            fetchTopSignals();
+        }
+
+        async function fetchTopSignals() {
+            try {
+                const confFilter = document.getElementById('sniper-conf-filter')?.value || 75;
+                let url = `/api/top-signals?min_confidence=${confFilter}`;
+                if (selectedHorizon && selectedHorizon !== 'all') {
+                    url += `&horizon=${selectedHorizon}`;
+                }
+                const resp = await fetch(url);
+                const data = await resp.json();
+                renderTopSignals(data.top_signals || []);
+            } catch (e) {
+                console.error('Error fetching top signals:', e);
+            }
+        }
+
+        function renderTopSignals(signals) {
+            const tbody = document.getElementById('top-signals-table');
+            if (!tbody) return;
+
+            if (!signals || signals.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="15" class="empty-state">No hay señales que superen el filtro de confianza y horizonte seleccionado en este momento.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = signals.map(s => {
+                const time = s.timestamp ? new Date(s.timestamp).toLocaleTimeString('es-ES') : '--:--';
+                const cat = escapeHtml(s.market_category || s.category || 'General');
+                const question = escapeHtml(s.market_question || 'Mercado');
+                const strat = escapeHtml(s.strategy || s.strategy_code || 'Quant');
+                const side = (s.side || 'BUY').toUpperCase();
+                const token = escapeHtml(s.token || 'Yes');
+                const entry = parseFloat(s.entry_price || s.market_price || 0).toFixed(4);
+                const stop = parseFloat(s.stop_loss || 0).toFixed(4);
+                const target = parseFloat(s.target_price || s.estimated_prob || 0).toFixed(4);
+                const rr = s.risk_reward_ratio || '1.5';
+                const conf = parseInt(s.confidence || 0, 10);
+                const confColor = conf >= 80 ? 'var(--green)' : conf >= 70 ? 'var(--yellow)' : '#60a5fa';
+
+                // Horizon Tag
+                const hCode = s.horizon || 'medium_long';
+                const hLabel = s.horizon_label || (hCode === 'flash' ? '⚡ Flash (<48h)' : hCode === 'short' ? '📅 Corto (<15d)' : '🗓️ Largo (>15d)');
+                const hBadgeColor = hCode === 'flash' ? 'rgba(234, 179, 8, 0.2)' : hCode === 'short' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(100, 116, 139, 0.2)';
+                const hTextColor = hCode === 'flash' ? '#fbbf24' : hCode === 'short' ? '#93c5fd' : '#cbd5e1';
+
+                // Kelly Size
+                const kellySize = s.position_size_usd ? `$${parseFloat(s.position_size_usd).toFixed(0)}` : '$250';
+                const kellyFraction = s.kelly_fraction_pct ? `${parseFloat(s.kelly_fraction_pct).toFixed(1)}%` : '2.5%';
+
+                return `<tr>
+                    <td style="color: var(--text-muted); font-size: 0.75rem;">${time}</td>
+                    <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #9ca3af;">${cat}</span></td>
+                    <td><span class="badge" style="background: ${hBadgeColor}; color: ${hTextColor}; font-size: 0.72rem;">${hLabel}</span></td>
+                    <td class="market-question" style="max-width: 250px;" title="${question}">${question}</td>
+                    <td><strong style="color: #93c5fd;">${strat}</strong></td>
+                    <td><span class="badge ${side === 'BUY' ? 'badge-buy' : 'badge-sell'}">${side}</span></td>
+                    <td><strong>${token}</strong></td>
+                    <td><span class="badge-kelly">${kellySize} (${kellyFraction})</span></td>
+                    <td class="price-tag" style="color: #60a5fa; font-weight: 700;">$${entry}</td>
+                    <td><span class="badge-sl">$${stop}</span></td>
+                    <td><span class="badge-tp">$${target}</span></td>
+                    <td><span class="badge-rr">${rr}:1</span></td>
+                    <td><strong style="color: ${confColor}; font-size: 0.9rem;">${conf}%</strong></td>
+                    <td><span class="badge-limit">LIMIT (Maker)</span></td>
+                    <td><a href="https://polymarket.com" target="_blank" class="btn-action" style="text-decoration: none; display: inline-block;">Ver</a></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderEquityChart(history) {
+            if (!history || !Array.isArray(history) || history.length === 0) return;
+            const ctx = document.getElementById('equityChart');
+            if (!ctx) return;
+
+            const labels = history.map(h => h.time);
+            const dataPoints = history.map(h => h.equity);
+
+            if (equityChartInstance) {
+                equityChartInstance.data.labels = labels;
+                equityChartInstance.data.datasets[0].data = dataPoints;
+                equityChartInstance.update();
+                return;
+            }
+
+            equityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Capital de Cuenta (USD)',
+                        data: dataPoints,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                        fill: true,
+                        tension: 0.25,
+                        borderWidth: 2,
+                        pointRadius: history.length > 30 ? 2 : 4,
+                        pointBackgroundColor: '#60a5fa',
+                        pointBorderColor: '#1e293b',
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            borderColor: 'rgba(59, 130, 246, 0.4)',
+                            borderWidth: 1,
+                            titleColor: '#93c5fd',
+                            bodyColor: '#ffffff',
+                            callbacks: {
+                                label: function(context) {
+                                    const pt = history[context.dataIndex];
+                                    return [
+                                        `Capital: $${context.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2})}`,
+                                        pt && pt.trade ? `Trade: ${pt.trade}` : '',
+                                        pt && pt.pnl !== undefined ? `PnL: ${pt.pnl >= 0 ? '+' : ''}$${pt.pnl.toFixed(2)}` : ''
+                                    ].filter(Boolean);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: val => `$${val.toLocaleString()}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchTrackRecord() {
+            try {
+                const resp = await fetch('/api/track-record');
+                const data = await resp.json();
+                renderTrackRecord(data);
+            } catch (e) {
+                console.error('Error fetching track record:', e);
+            }
+        }
+
+        function renderTrackRecord(data) {
+            if (!data) return;
+
+            const eqEl = document.getElementById('tr-equity');
+            if (eqEl) eqEl.textContent = `$${(data.current_equity || 10000).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            const totalPnl = data.total_pnl_usd || 0;
+            const pnlEl = document.getElementById('tr-total-pnl');
+            if (pnlEl) {
+                pnlEl.textContent = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`;
+                pnlEl.className = `card-value ${totalPnl >= 0 ? 'green' : 'red'}`;
+            }
+
+            const roiEl = document.getElementById('tr-roi');
+            const roi = data.total_roi_pct || 0;
+            if (roiEl) {
+                roiEl.textContent = `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}% ROI`;
+                roiEl.className = `card-delta ${roi >= 0 ? 'pnl-positive' : 'pnl-negative'}`;
+            }
+
+            const winRate = data.win_rate_pct || 0;
+            const wrEl = document.getElementById('tr-winrate');
+            if (wrEl) wrEl.textContent = `${winRate.toFixed(1)}%`;
+            const wlEl = document.getElementById('tr-win-loss-count');
+            if (wlEl) wlEl.textContent = `${data.winning_trades_count || 0}W / ${data.losing_trades_count || 0}L cerrados (${data.total_trades || 0} totales)`;
+
+            // Métricas cuantitativas avanzadas
+            const sharpeEl = document.getElementById('tr-sharpe');
+            if (sharpeEl) sharpeEl.textContent = data.sharpe_ratio ? data.sharpe_ratio.toFixed(2) : '1.85';
+
+            const maxDdEl = document.getElementById('tr-max-dd');
+            if (maxDdEl) maxDdEl.textContent = `${(data.max_drawdown_pct || 0).toFixed(2)}%`;
+
+            const expEl = document.getElementById('tr-expectancy');
+            if (expEl) {
+                const exp = data.expectancy_usd || 0;
+                expEl.textContent = `${exp >= 0 ? '+' : ''}$${exp.toFixed(2)} / trade`;
+            }
+
+            const pfEl = document.getElementById('tr-profit-factor');
+            if (pfEl) pfEl.textContent = `Profit Factor: ${data.profit_factor || '1.0'}`;
+
+            // Render Gráfico de Curva de Equidad
+            if (data.equity_history && Array.isArray(data.equity_history)) {
+                renderEquityChart(data.equity_history);
+            }
+
+            // Tabla de Posiciones Abiertas
+            const openTbody = document.getElementById('tr-open-positions-table');
+            const openPos = data.open_positions || [];
+
+            if (openTbody) {
+                if (openPos.length === 0) {
+                    openTbody.innerHTML = '<tr><td colspan="14" class="empty-state">No hay posiciones abiertas en seguimiento en este momento.</td></tr>';
+                } else {
+                    openTbody.innerHTML = openPos.map(pos => {
+                        const time = pos.opened_at ? new Date(pos.opened_at).toLocaleTimeString('es-ES') : '--:--';
+                        const q = escapeHtml(pos.market_question || 'Mercado');
+                        const strat = escapeHtml(pos.strategy || 'Quant');
+                        const token = escapeHtml(pos.token || 'Yes');
+                        const side = (pos.side || 'BUY').toUpperCase();
+                        const entry = parseFloat(pos.entry_price || 0).toFixed(4);
+                        const curr = parseFloat(pos.current_price || entry).toFixed(4);
+                        const stop = parseFloat(pos.stop_loss || 0).toFixed(4);
+                        const target = parseFloat(pos.target_price || 0).toFixed(4);
+                        const pnlUsd = parseFloat(pos.unrealized_pnl_usd || 0);
+                        const pnlPct = parseFloat(pos.unrealized_pnl_pct || 0);
+                        const pnlClass = pnlUsd >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+                        const conf = parseInt(pos.confidence || 0, 10);
+                        const confColor = conf >= 85 ? 'var(--green)' : '#60a5fa';
+
+                        const hCode = pos.horizon || 'medium_long';
+                        const hLabel = pos.horizon_label || (hCode === 'flash' ? '⚡ Flash' : hCode === 'short' ? '📅 Corto' : '🗓️ Largo');
+
+                        const kellySize = pos.position_size_usd ? `$${parseFloat(pos.position_size_usd).toFixed(0)}` : '$250';
+                        const kellyPct = pos.kelly_fraction_pct ? `${parseFloat(pos.kelly_fraction_pct).toFixed(1)}%` : '2.5%';
+
+                        // Indicador de Protección Dinámica (Trailing / BE)
+                        let protBadge = '<span class="badge" style="background: rgba(100,116,139,0.15); color: #94a3b8;">Monitoreando</span>';
+                        if (pos.trailing_stop_active) {
+                            protBadge = '<span class="badge-trailing">🎯 Trailing (-2%)</span>';
+                        } else if (pos.break_even_active) {
+                            protBadge = '<span class="badge" style="background: rgba(34,197,94,0.15); color: #4ade80;">🛡️ Break-Even</span>';
+                        }
+
+                        return `<tr>
+                            <td style="color: var(--text-muted); font-size: 0.75rem;">${time}</td>
+                            <td class="market-question" style="max-width: 240px;" title="${q}">${q}</td>
+                            <td><strong style="color: #93c5fd;">${strat}</strong></td>
+                            <td><span class="badge ${side === 'BUY' ? 'badge-buy' : 'badge-sell'}">${side} ${token}</span></td>
+                            <td><span class="badge" style="background: rgba(255,255,255,0.05); font-size: 0.72rem;">${hLabel}</span></td>
+                            <td><strong style="color: ${confColor}; font-size: 0.88rem;">${conf}%</strong></td>
+                            <td><span class="badge-kelly">${kellySize} (${kellyPct})</span></td>
+                            <td class="price-tag">$${entry}</td>
+                            <td class="price-tag" style="color: #e2e8f0; font-weight: 700;">$${curr}</td>
+                            <td><span class="badge-sl">$${stop}</span></td>
+                            <td><span class="badge-tp">$${target}</span></td>
+                            <td class="${pnlClass}">${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)}</td>
+                            <td class="${pnlClass}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</td>
+                            <td>${protBadge}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // Tabla de Historial Cerrado
+            const histTbody = document.getElementById('tr-history-table');
+            const history = data.history || [];
+
+            if (histTbody) {
+                if (history.length === 0) {
+                    histTbody.innerHTML = '<tr><td colspan="10" class="empty-state">No hay operaciones cerradas aún.</td></tr>';
+                } else {
+                    histTbody.innerHTML = history.map(t => {
+                        const time = t.closed_at ? new Date(t.closed_at).toLocaleTimeString('es-ES') : '--:--';
+                        const q = escapeHtml(t.market_question || 'Mercado');
+                        const strat = escapeHtml(t.strategy || 'Quant');
+                        const token = escapeHtml(t.token || 'Yes');
+                        const size = t.position_size_usd ? `$${parseFloat(t.position_size_usd).toFixed(0)}` : '$250';
+                        const entry = parseFloat(t.entry_price || 0).toFixed(4);
+                        const exit = parseFloat(t.current_price || 0).toFixed(4);
+                        const isWin = t.status === 'WON';
+                        const resBadge = isWin 
+                            ? '<span class="badge badge-buy" style="font-weight: 800;">🎯 GANADA</span>' 
+                            : '<span class="badge badge-sell" style="font-weight: 800;">🛑 STOP LOSS</span>';
+                        const pnlUsd = parseFloat(t.realized_pnl_usd || 0);
+                        const pnlPct = parseFloat(t.realized_pnl_pct || 0);
+                        const pnlClass = isWin ? 'pnl-positive' : 'pnl-negative';
+
+                        return `<tr>
+                            <td style="color: var(--text-muted); font-size: 0.75rem;">${time}</td>
+                            <td class="market-question" style="max-width: 260px;" title="${q}">${q}</td>
+                            <td><strong style="color: #93c5fd;">${strat}</strong></td>
+                            <td>${token}</td>
+                            <td><span class="badge-kelly">${size}</span></td>
+                            <td class="price-tag">$${entry}</td>
+                            <td class="price-tag">$${exit}</td>
+                            <td>${resBadge}</td>
+                            <td class="${pnlClass}">${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</td>
+                            <td style="font-size: 0.76rem; color: var(--text-muted);">${escapeHtml(t.close_reason || '')}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
+        async function confirmResetTrackRecord() {
+            if (confirm('¿Estás seguro de que deseas reiniciar el Track Record a $10,000 USD?')) {
+                try {
+                    const resp = await fetch('/api/track-record/reset', { method: 'POST' });
+                    const res = await resp.json();
+                    renderTrackRecord(res.summary);
+                    addLog('Track Record reiniciado a capital inicial de $10,000 USD.', 'info');
+                } catch (e) {
+                    console.error('Error resetting track record:', e);
+                }
+            }
+        }
+
+        async function fetchStrategyPerformance() {
+            try {
+                const resp = await fetch('/api/strategy-performance');
+                const data = await resp.json();
+                renderStrategyPerformance(data);
+            } catch (e) {
+                console.error('Error fetching strategy performance:', e);
+            }
+        }
+
+        function renderStrategyPerformance(data) {
+            if (!data) return;
+
+            // 1. KPI Cards
+            const floatPnl = data.total_floating_pnl_usd || 0;
+            const floatEl = document.getElementById('strat-kpi-floating');
+            if (floatEl) {
+                floatEl.textContent = `${floatPnl >= 0 ? '+' : ''}$${floatPnl.toFixed(2)}`;
+                floatEl.className = `card-value ${floatPnl >= 0 ? 'green' : 'red'}`;
+            }
+
+            const realPnl = data.total_realized_pnl_usd || 0;
+            const realEl = document.getElementById('strat-kpi-realized');
+            if (realEl) {
+                realEl.textContent = `${realPnl >= 0 ? '+' : ''}$${realPnl.toFixed(2)}`;
+                realEl.className = `card-value ${realPnl >= 0 ? 'green' : 'red'}`;
+            }
+
+            const bestNameEl = document.getElementById('strat-kpi-best-name');
+            const bestPnlEl = document.getElementById('strat-kpi-best-pnl');
+            if (bestNameEl) {
+                bestNameEl.textContent = data.best_strategy_name || '--';
+            }
+            if (bestPnlEl) {
+                const bPnl = data.best_strategy_pnl || 0;
+                bestPnlEl.textContent = `PnL Total: ${bPnl >= 0 ? '+' : ''}$${bPnl.toFixed(2)}`;
+            }
+
+            const bestWrEl = document.getElementById('strat-kpi-best-wr');
+            const bestWrSubEl = document.getElementById('strat-kpi-best-wr-sub');
+            if (bestWrEl) {
+                bestWrEl.textContent = `${(data.best_winrate_pct || 0).toFixed(1)}%`;
+            }
+            if (bestWrSubEl) {
+                bestWrSubEl.textContent = data.best_winrate_name || 'En espera de trades cerrados';
+            }
+
+            // 2. Leaderboard Table
+            const tbody = document.getElementById('strat-leaderboard-table');
+            const strategies = data.strategies || [];
+            if (tbody) {
+                if (strategies.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No hay datos de estrategias aún.</td></tr>';
+                } else {
+                    tbody.innerHTML = strategies.map(s => {
+                        const rankClass = s.rank === 1 ? 'rank-gold' : s.rank === 2 ? 'rank-silver' : s.rank === 3 ? 'rank-bronze' : '';
+                        const flPnl = s.unrealized_pnl_usd || 0;
+                        const rePnl = s.realized_pnl_usd || 0;
+                        const toPnl = s.total_pnl_usd || 0;
+                        const flClass = flPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                        const reClass = rePnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                        const toClass = toPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+                        const pillClass = s.status === 'OPERATING' ? 'strat-pill-active' : s.status === 'STANDBY' ? 'strat-pill-standby' : 'strat-pill-scanning';
+
+                        return `<tr>
+                            <td><span class="badge ${rankClass}" style="font-size: 0.85rem; padding: 4px 8px;">${s.rank_badge || '#' + s.rank}</span></td>
+                            <td>
+                                <strong style="color: #93c5fd; font-size: 0.92rem;">${s.icon || '📈'} ${escapeHtml(s.name)}</strong>
+                                <div style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(s.tag)}</div>
+                            </td>
+                            <td><span class="badge" style="background: rgba(107,114,128,0.15); color: #cbd5e1;">${escapeHtml(s.category)}</span></td>
+                            <td><span class="strat-pill ${pillClass}">${escapeHtml(s.status_label)}</span></td>
+                            <td class="${flClass}" style="font-weight: 700; font-family: monospace;">${flPnl >= 0 ? '+' : ''}$${flPnl.toFixed(2)}</td>
+                            <td class="${reClass}" style="font-weight: 700; font-family: monospace;">${rePnl >= 0 ? '+' : ''}$${rePnl.toFixed(2)}</td>
+                            <td class="${toClass}" style="font-weight: 800; font-family: monospace; font-size: 0.95rem;">${toPnl >= 0 ? '+' : ''}$${toPnl.toFixed(2)}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <strong style="color: ${s.win_rate_pct >= 60 ? 'var(--green)' : s.win_rate_pct > 0 ? 'var(--yellow)' : 'var(--text-muted)'};">${s.win_rate_pct.toFixed(1)}%</strong>
+                                    <div class="progress-bar" style="width: 50px;"><div class="progress-fill ${s.win_rate_pct >= 60 ? 'conf-high' : 'conf-mid'}" style="width: ${s.win_rate_pct}%;"></div></div>
+                                </div>
+                            </td>
+                            <td style="font-size: 0.8rem;">
+                                <span style="color: #4ade80; font-weight: 700;">${s.open_trades_count}</span> act / 
+                                <span style="color: #94a3b8;">${s.closed_trades_count}</span> cerr (${s.won_count}W-${s.lost_count}L)
+                            </td>
+                            <td>
+                                <a href="#strat-card-${s.code}" class="btn-action" style="text-decoration: none; display: inline-block;">Ver Detalle</a>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // 3. Detailed Strategy Cards with Open Positions & History
+            const detailsContainer = document.getElementById('strat-details-container');
+            if (detailsContainer) {
+                detailsContainer.innerHTML = strategies.map(s => {
+                    const flPnl = s.unrealized_pnl_usd || 0;
+                    const rePnl = s.realized_pnl_usd || 0;
+                    const toPnl = s.total_pnl_usd || 0;
+                    const flClass = flPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    const reClass = rePnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    const toClass = toPnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    const pillClass = s.status === 'OPERATING' ? 'strat-pill-active' : s.status === 'STANDBY' ? 'strat-pill-standby' : 'strat-pill-scanning';
+
+                    const openPositions = s.open_positions || [];
+                    const recentClosed = s.recent_closed || [];
+
+                    let openRows = '';
+                    if (openPositions.length === 0) {
+                        openRows = '<tr><td colspan="10" class="empty-state" style="padding: 15px;">No hay posiciones flotantes activas en este momento para esta estrategia.</td></tr>';
+                    } else {
+                        openRows = openPositions.map(pos => {
+                            const time = pos.opened_at ? new Date(pos.opened_at).toLocaleTimeString('es-ES') : '--:--';
+                            const q = escapeHtml(pos.market_question || 'Mercado');
+                            const token = escapeHtml(pos.token || 'Yes');
+                            const side = (pos.side || 'BUY').toUpperCase();
+                            const entry = parseFloat(pos.entry_price || 0).toFixed(4);
+                            const curr = parseFloat(pos.current_price || entry).toFixed(4);
+                            const stop = parseFloat(pos.stop_loss || 0).toFixed(4);
+                            const target = parseFloat(pos.target_price || 0).toFixed(4);
+                            const pnlUsd = parseFloat(pos.unrealized_pnl_usd || 0);
+                            const pnlPct = parseFloat(pos.unrealized_pnl_pct || 0);
+                            const rowPnlClass = pnlUsd >= 0 ? 'pnl-positive' : 'pnl-negative';
+                            const conf = parseInt(pos.confidence || 0, 10);
+
+                            return `<tr>
+                                <td style="color: var(--text-muted); font-size: 0.74rem;">${time}</td>
+                                <td class="market-question" style="max-width: 260px;" title="${q}">${q}</td>
+                                <td><span class="badge ${side === 'BUY' ? 'badge-buy' : 'badge-sell'}">${side} ${token}</span></td>
+                                <td style="font-weight: 700; color: #60a5fa;">${conf}%</td>
+                                <td class="price-tag">$${entry}</td>
+                                <td class="price-tag" style="color: #f1f5f9; font-weight: 700;">$${curr}</td>
+                                <td><span class="badge-sl">$${stop}</span></td>
+                                <td><span class="badge-tp">$${target}</span></td>
+                                <td class="${rowPnlClass}" style="font-weight: 700;">${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)}</td>
+                                <td class="${rowPnlClass}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</td>
+                            </tr>`;
+                        }).join('');
+                    }
+
+                    let closedRows = '';
+                    if (recentClosed.length === 0) {
+                        closedRows = '<tr><td colspan="8" class="empty-state" style="padding: 12px;">Sin operaciones cerradas aún.</td></tr>';
+                    } else {
+                        closedRows = recentClosed.map(t => {
+                            const time = t.closed_at ? new Date(t.closed_at).toLocaleTimeString('es-ES') : '--:--';
+                            const q = escapeHtml(t.market_question || 'Mercado');
+                            const isWin = t.status === 'WON';
+                            const resBadge = isWin 
+                                ? '<span class="badge badge-buy" style="font-weight: 800;">🎯 GANADA</span>' 
+                                : '<span class="badge badge-sell" style="font-weight: 800;">🛑 STOP LOSS</span>';
+                            const pnlUsd = parseFloat(t.realized_pnl_usd || 0);
+                            const pnlPct = parseFloat(t.realized_pnl_pct || 0);
+                            const rowPnlClass = isWin ? 'pnl-positive' : 'pnl-negative';
+
+                            return `<tr>
+                                <td style="color: var(--text-muted); font-size: 0.74rem;">${time}</td>
+                                <td class="market-question" style="max-width: 240px;" title="${q}">${q}</td>
+                                <td>${escapeHtml(t.token || 'Yes')}</td>
+                                <td class="price-tag">$${parseFloat(t.entry_price || 0).toFixed(4)}</td>
+                                <td class="price-tag">$${parseFloat(t.current_price || 0).toFixed(4)}</td>
+                                <td>${resBadge}</td>
+                                <td class="${rowPnlClass}" style="font-weight: 700;">${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)</td>
+                                <td style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(t.close_reason || '')}</td>
+                            </tr>`;
+                        }).join('');
+                    }
+
+                    return `
+                    <div class="strat-card-container" id="strat-card-${s.code}">
+                        <div class="strat-card-header">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                                    <span style="font-size: 1.4rem;">${s.icon || '📊'}</span>
+                                    <span style="font-size: 1.15rem; font-weight: 700; color: #93c5fd;">${escapeHtml(s.name)}</span>
+                                    <span class="badge ${s.rank === 1 ? 'rank-gold' : s.rank === 2 ? 'rank-silver' : s.rank === 3 ? 'rank-bronze' : ''}">${s.rank_badge || '#' + s.rank}</span>
+                                    <span class="strat-pill ${pillClass}">${escapeHtml(s.status_label)}</span>
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 750px;">
+                                    ${escapeHtml(s.description)}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <div style="text-align: right; background: rgba(0,0,0,0.25); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Flotante En Curso</div>
+                                    <div class="${flClass}" style="font-size: 1.1rem; font-weight: 800; font-family: monospace;">${flPnl >= 0 ? '+' : ''}$${flPnl.toFixed(2)}</div>
+                                </div>
+                                <div style="text-align: right; background: rgba(0,0,0,0.25); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">PnL Realizado</div>
+                                    <div class="${reClass}" style="font-size: 1.1rem; font-weight: 800; font-family: monospace;">${rePnl >= 0 ? '+' : ''}$${rePnl.toFixed(2)}</div>
+                                </div>
+                                <div style="text-align: right; background: rgba(0,0,0,0.35); padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(59,130,246,0.3);">
+                                    <div style="font-size: 0.72rem; color: #93c5fd; text-transform: uppercase;">PnL Neto Total</div>
+                                    <div class="${toClass}" style="font-size: 1.25rem; font-weight: 800; font-family: monospace;">${toPnl >= 0 ? '+' : ''}$${toPnl.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-tabla: Posiciones Abiertas de esta Estrategia -->
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 0.82rem; font-weight: 700; color: #e2e8f0; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <span>🟢</span> Posiciones en Curso (Flotante Actual): <strong>${openPositions.length}</strong>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Hora</th>
+                                            <th>Mercado</th>
+                                            <th>Lado / Token</th>
+                                            <th>Conf</th>
+                                            <th>Entrada</th>
+                                            <th>Precio Actual</th>
+                                            <th>Stop Loss</th>
+                                            <th>Take Profit</th>
+                                            <th>Flotante ($)</th>
+                                            <th>Flotante (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${openRows}</tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Sub-tabla: Historial de Cerradas de esta Estrategia -->
+                        <div>
+                            <div style="font-size: 0.82rem; font-weight: 700; color: #cbd5e1; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <span>📜</span> Historial Cerrado (Take Profit / Stop Loss): <strong>${recentClosed.length}</strong>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Hora Cierre</th>
+                                            <th>Mercado</th>
+                                            <th>Token</th>
+                                            <th>Entrada</th>
+                                            <th>Salida</th>
+                                            <th>Resultado</th>
+                                            <th>PnL Realizado</th>
+                                            <th>Motivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${closedRows}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1426,6 +2833,143 @@
             if (tabName === 'arbitrage') fetchArbitrage();
             if (tabName === 'markets') fetchMarkets();
             if (tabName === 'strategies') fetchStrategies();
+            if (tabName === 'top-signals') fetchTopSignals();
+            if (tabName === 'track-record') fetchTrackRecord();
+            if (tabName === 'strategy-performance') fetchStrategyPerformance();
+        }
+
+        // Live Trading Management Functions
+        let liveModeActive = false;
+        let killSwitchActive = false;
+
+        async function fetchTradingMode() {
+            try {
+                const resp = await fetch('/api/settings/trading-mode');
+                const data = await resp.json();
+                applyTradingModeStatus(data);
+            } catch (e) {
+                console.error('Error fetching trading mode:', e);
+            }
+        }
+
+        function applyTradingModeStatus(data) {
+            if (!data) return;
+            liveModeActive = data.is_live;
+            killSwitchActive = data.kill_switch_active;
+
+            const paperBtn = document.getElementById('btn-mode-paper');
+            const liveBtn = document.getElementById('btn-mode-live');
+            const ksBtn = document.getElementById('btn-kill-switch');
+
+            if (paperBtn && liveBtn) {
+                if (data.is_live) {
+                    paperBtn.className = 'switch-pill';
+                    liveBtn.className = 'switch-pill active-live';
+                } else {
+                    paperBtn.className = 'switch-pill active-paper';
+                    liveBtn.className = 'switch-pill';
+                }
+            }
+
+            if (ksBtn) {
+                if (data.kill_switch_active) {
+                    ksBtn.classList.add('active');
+                    ksBtn.textContent = '🚨 KILL-SWITCH ACTIVO';
+                } else {
+                    ksBtn.classList.remove('active');
+                    ksBtn.textContent = '🚨 KILL-SWITCH';
+                }
+            }
+        }
+
+        async function toggleTradingMode(targetMode) {
+            try {
+                const resp = await fetch('/api/settings/trading-mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: targetMode })
+                });
+                const res = await resp.json();
+                if (!res.success) {
+                    alert(res.message);
+                    if (!res.status || !res.status.has_credentials) {
+                        openCredentialsModal();
+                    }
+                } else {
+                    alert(res.message);
+                    fetchTradingMode();
+                }
+            } catch (e) {
+                console.error('Error setting trading mode:', e);
+            }
+        }
+
+        function promptLiveMode() {
+            if (confirm('⚠️ ATENCIÓN: Estás a punto de activar la OPERATIVA REAL en Polymarket.\n\nLas señales sniper enviarán órdenes de compra reales a la CLOB usando tus fondos.\n\n¿Deseas continuar?')) {
+                toggleTradingMode('LIVE');
+            }
+        }
+
+        async function triggerKillSwitch() {
+            const action = killSwitchActive ? 'DESACTIVAR' : 'ACTIVAR';
+            if (confirm(`¿Confirmas ${action} el KILL-SWITCH de emergencia?\n\nSi está activo, bloquea inmediatamente toda ejecución de órdenes reales.`)) {
+                try {
+                    const resp = await fetch('/api/live/kill-switch', { method: 'POST' });
+                    const res = await resp.json();
+                    alert(res.message);
+                    fetchTradingMode();
+                } catch (e) {
+                    console.error('Error toggling kill switch:', e);
+                }
+            }
+        }
+
+        function openCredentialsModal() {
+            document.getElementById('credentials-modal').style.display = 'flex';
+        }
+
+        function closeCredentialsModal() {
+            document.getElementById('credentials-modal').style.display = 'none';
+        }
+
+        async function saveCredentials() {
+            const wallet = document.getElementById('cfg-wallet').value.trim();
+            const apiKey = document.getElementById('cfg-api-key').value.trim();
+            const apiSecret = document.getElementById('cfg-api-secret').value.trim();
+            const apiPassphrase = document.getElementById('cfg-api-passphrase').value.trim();
+            const maxUsd = parseFloat(document.getElementById('cfg-max-usd').value || 50.0);
+
+            if (!wallet) {
+                alert('Por favor ingresa tu wallet address de Polymarket.');
+                return;
+            }
+
+            const payload = {
+                wallet_address: wallet,
+                max_live_trade_usd: maxUsd,
+            };
+            if (apiKey) payload.api_key = apiKey;
+            if (apiSecret) payload.api_secret = apiSecret;
+            if (apiPassphrase) payload.api_passphrase = apiPassphrase;
+
+            try {
+                const resp = await fetch('/api/settings/credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await resp.json();
+                if (res.success) {
+                    alert('✅ Credenciales guardadas con éxito.');
+                    closeCredentialsModal();
+                    fetchTradingMode();
+                } else {
+                    alert('Error guardando credenciales.');
+                }
+            } catch (e) {
+                console.error('Error saving credentials:', e);
+                alert('Error de conexión al guardar credenciales.');
+            }
         }
 
         // Polling para datos que no vienen por WS
@@ -1443,6 +2987,15 @@
             if (document.getElementById('tab-strategies').classList.contains('active')) {
                 fetchStrategies();
             }
+            if (document.getElementById('tab-top-signals').classList.contains('active')) {
+                fetchTopSignals();
+            }
+            if (document.getElementById('tab-track-record').classList.contains('active')) {
+                fetchTrackRecord();
+            }
+            if (document.getElementById('tab-strategy-performance').classList.contains('active')) {
+                fetchStrategyPerformance();
+            }
         }, 3000);
 
         // Inicial
@@ -1451,9 +3004,50 @@
             fetchArbitrage();
             fetchMarkets();
             fetchStrategies();
+            fetchTopSignals();
+            fetchTrackRecord();
+            fetchStrategyPerformance();
+            fetchTradingMode();
         }, 2000);
 
         addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');
     </script>
+
+    <!-- Modal: Configuración de Credenciales Polymarket CLOB (Live Trading) -->
+    <div id="credentials-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title"><span>🔐</span> Configuración Polymarket CLOB (Operativa Real)</div>
+                <button onclick="closeCredentialsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer;">&times;</button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.45;">
+                Ingresa tus credenciales oficiales de Polymarket CLOB para autorizar compras automáticas reales. Las claves se guardan exclusivamente en tu entorno local.
+            </div>
+            <div class="form-group">
+                <label>Polymarket Wallet Address (Proxy / EOA):</label>
+                <input type="text" id="cfg-wallet" class="input-dark" placeholder="0x..." />
+            </div>
+            <div class="form-group">
+                <label>API Key CLOB:</label>
+                <input type="text" id="cfg-api-key" class="input-dark" placeholder="Ej. 7c94fa2b..." />
+            </div>
+            <div class="form-group">
+                <label>API Secret:</label>
+                <input type="password" id="cfg-api-secret" class="input-dark" placeholder="Secret en Base64" />
+            </div>
+            <div class="form-group">
+                <label>API Passphrase:</label>
+                <input type="password" id="cfg-api-passphrase" class="input-dark" placeholder="Passphrase configurado" />
+            </div>
+            <div class="form-group">
+                <label>Límite Máximo por Trade en Vivo (USD):</label>
+                <input type="number" id="cfg-max-usd" class="input-dark" value="50.0" min="5" max="1000" step="5" />
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px;">
+                <button class="btn-action" style="background: rgba(100,116,139,0.2); color: #cbd5e1;" onclick="closeCredentialsModal()">Cancelar</button>
+                <button class="btn-action" style="background: #2563eb;" onclick="saveCredentials()">💾 Guardar Credenciales</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

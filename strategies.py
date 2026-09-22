@@ -11,6 +11,11 @@ from s03_nothing_ever_happens import NothingEverHappens
 from s05_negrisk_rebalancing import NegRiskRebalancing
 from s10_yes_bias import YesBiasExploitation
 from s12_high_prob_harvesting import HighProbabilityHarvesting
+from s20_oracle_delay_sniping import OracleDelaySniping
+from s21_conditional_arbitrage import ConditionalArbitrage
+from s22_news_latency_sniping import FastNewsSniping
+from s23_resolution_rules_lawyer import ResolutionRulesLawyer
+from s24_order_flow_imbalance import OrderFlowImbalance
 
 
 class StrategyEngine:
@@ -22,6 +27,11 @@ class StrategyEngine:
         "s05_negrisk_rebalancing": "S05: NegRisk Rebalancing",
         "s10_yes_bias": "S10: Yes Bias",
         "s12_high_prob_harvesting": "S12: High Prob Harvesting",
+        "s20_oracle_delay_sniping": "S20: Oracle Delay Sniping",
+        "s21_conditional_arbitrage": "S21: Arbitraje Condicional",
+        "s22_news_latency_sniping": "S22: Fast News Sniping",
+        "s23_resolution_rules_lawyer": "S23: Rules-Lawyer",
+        "s24_order_flow_imbalance": "S24: Order Flow Imbalance",
     }
 
     def __init__(self):
@@ -32,6 +42,11 @@ class StrategyEngine:
             NegRiskRebalancing(),
             YesBiasExploitation(),
             HighProbabilityHarvesting(),
+            OracleDelaySniping(),
+            ConditionalArbitrage(),
+            FastNewsSniping(),
+            ResolutionRulesLawyer(),
+            OrderFlowImbalance(),
         ]
 
     @staticmethod
@@ -143,6 +158,7 @@ class StrategyEngine:
             active=m.active and not m.closed and not m.resolved,
             end_date_iso=end_date_iso,
             description=m.resolution_source,
+            resolution_source=m.resolution_source,
         )
 
     @staticmethod
@@ -205,6 +221,16 @@ class StrategyEngine:
                 f"Contrato de alta probabilidad cerca de resolución. Quedan {metadata.get('days_left', 'N/A')} días; "
                 f"yield anualizado estimado {metadata.get('annualized_yield', 'N/A')}."
             )
+        if signal.strategy_name == "s20_oracle_delay_sniping":
+            return f"Descuento UMA de liquidación: contrato cotiza a ${signal.market_price:.3f} con liquidación esperada a $1.00 (-{metadata.get('discount_pct', 0)}% off)."
+        if signal.strategy_name == "s21_conditional_arbitrage":
+            return f"Arbitraje condicional: {metadata.get('trigger_reason', 'Discrepancia en escalera o prerrequisito de eventos')}."
+        if signal.strategy_name == "s22_news_latency_sniping":
+            return f"Fast News Snipe: {metadata.get('headline', 'Catalizador detectado')}. Órdenes desactualizadas en el book."
+        if signal.strategy_name == "s23_resolution_rules_lawyer":
+            return f"Reglas Contractuales Estrictas: {metadata.get('trigger_reason', 'Condición legal de resolución favorece BUY NO')}."
+        if signal.strategy_name == "s24_order_flow_imbalance":
+            return f"Order Flow Imbalance (OFI): Absorción de liquidez agresiva en microestructura. Momentum para scalping."
         return f"Señal modular con edge estimado {edge * 100:.2f}%."
 
     def _modular_signal_to_dashboard(self, m: MarketSnapshot, signal: Signal) -> Optional[Dict]:
@@ -230,6 +256,28 @@ class StrategyEngine:
         metadata = self._clean_metric_value(signal.metadata)
         dedupe_suffix = token_label.replace(" ", "_")
 
+        entry_f = float(signal.market_price)
+        target_f = max(0.001, min(0.999, float(signal.estimated_prob)))
+        if side == "BUY":
+            if signal.strategy_name == "s20_oracle_delay_sniping":
+                stop_f = max(0.01, entry_f * 0.95)
+            elif signal.strategy_name == "s24_order_flow_imbalance":
+                stop_f = max(0.01, entry_f * 0.965)
+            elif signal.strategy_name == "s12_high_prob_harvesting":
+                stop_f = max(0.01, entry_f * 0.94)
+            elif signal.strategy_name == "s02_weather_noaa":
+                stop_f = max(0.01, entry_f * 0.75)
+            elif signal.strategy_name in ("s03_nothing_ever_happens", "s10_yes_bias", "s23_resolution_rules_lawyer"):
+                stop_f = max(0.01, entry_f * 0.84)
+            else:
+                stop_f = max(0.01, entry_f * 0.90)
+        else:
+            stop_f = min(0.99, entry_f * 1.10)
+
+        risk_val = abs(entry_f - stop_f)
+        reward_val = abs(target_f - entry_f)
+        rr_ratio = round(reward_val / risk_val, 2) if risk_val > 0 else 1.5
+
         return {
             "signal_id": str(uuid.uuid4())[:8],
             "strategy": strategy_label,
@@ -237,8 +285,11 @@ class StrategyEngine:
             "side": side,
             "token": token_label,
             "token_id": signal.token_id,
-            "entry_price": f"{signal.market_price:.4f}",
-            "target_price": f"{max(0.0, min(1.0, signal.estimated_prob)):.4f}",
+            "entry_price": f"{entry_f:.4f}",
+            "target_price": f"{target_f:.4f}",
+            "stop_loss": f"{stop_f:.4f}",
+            "recommended_order_type": "LIMIT (Maker)",
+            "risk_reward_ratio": rr_ratio,
             "size": "100",
             "confidence": confidence,
             "urgency": urgency,
@@ -256,6 +307,9 @@ class StrategyEngine:
                 "estimated_prob": round(signal.estimated_prob, 6),
                 "market_price": round(signal.market_price, 6),
                 "edge_pct": round(edge * 100, 3),
+                "stop_loss": round(stop_f, 4),
+                "target_price": round(target_f, 4),
+                "risk_reward_ratio": rr_ratio,
                 "metadata": metadata,
             },
         }

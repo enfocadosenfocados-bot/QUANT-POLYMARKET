@@ -19,6 +19,7 @@ class Market:
     active: bool = True
     end_date_iso: Optional[str] = None
     description: str = ""
+    resolution_source: str = ""
 
 
 @dataclass
