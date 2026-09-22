@@ -2678,7 +2678,7 @@
             if (!data) return;
 
             const eqEl = document.getElementById('tr-equity');
-            if (eqEl) eqEl.textContent = `$${(data.current_equity || 10000).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            if (eqEl) eqEl.textContent = `$${(data.current_equity || 1000).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
             const totalPnl = data.total_pnl_usd || 0;
             const pnlEl = document.getElementById('tr-total-pnl');
@@ -2749,7 +2749,7 @@
                         const hCode = pos.horizon || 'medium_long';
                         const hLabel = pos.horizon_label || (hCode === 'flash' ? '⚡ Flash' : hCode === 'short' ? '📅 Corto' : '🗓️ Largo');
 
-                        const kellySize = pos.position_size_usd ? `$${parseFloat(pos.position_size_usd).toFixed(0)}` : '$250';
+                        const kellySize = pos.position_size_usd ? `$${parseFloat(pos.position_size_usd).toFixed(0)}` : '$25';
                         const kellyPct = pos.kelly_fraction_pct ? `${parseFloat(pos.kelly_fraction_pct).toFixed(1)}%` : '2.5%';
 
                         // Indicador de Protección Dinámica (Trailing / BE)
@@ -2793,7 +2793,7 @@
                         const q = escapeHtml(t.market_question || 'Mercado');
                         const strat = escapeHtml(t.strategy || 'Quant');
                         const token = escapeHtml(t.token || 'Yes');
-                        const size = t.position_size_usd ? `$${parseFloat(t.position_size_usd).toFixed(0)}` : '$250';
+                        const size = t.position_size_usd ? `$${parseFloat(t.position_size_usd).toFixed(0)}` : '$25';
                         const entry = parseFloat(t.entry_price || 0).toFixed(4);
                         const exit = parseFloat(t.current_price || 0).toFixed(4);
                         const isWin = t.status === 'WON';
@@ -3619,7 +3619,7 @@
             </div>
             <div class="form-group">
                 <label>Límite Máximo por Trade en Vivo (USD):</label>
-                <input type="number" id="cfg-max-usd" class="input-dark" value="50.0" min="5" max="1000" step="5" />
+                <input type="number" id="cfg-max-usd" class="input-dark" value="25.0" min="2" max="150" step="5" />
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px;">
                 <button class="btn-action" style="background: rgba(100,116,139,0.2); color: #cbd5e1;" onclick="closeCredentialsModal()">Cancelar</button>

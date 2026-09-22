@@ -5,18 +5,18 @@ from paper_tracker import calculate_kelly_size, classify_time_horizon, PaperTrad
 class TestAdvancedFeatures(unittest.TestCase):
     def test_kelly_sizing(self):
         k_high = calculate_kelly_size(
-            confidence=97.0, entry_price=0.90, target_price=0.99, stop_loss=0.82, side="BUY", account_equity=10000.0, fraction=0.25
+            confidence=97.0, entry_price=0.90, target_price=0.99, stop_loss=0.82, side="BUY", account_equity=1000.0, fraction=0.25, min_size_usd=10.0, max_size_usd=100.0
         )
-        self.assertGreaterEqual(k_high["size_usd"], 500.0)
-        self.assertLessEqual(k_high["size_usd"], 1000.0)
-        print(f"[TEST Kelly High] Size: ${k_high['size_usd']} ({k_high['kelly_fraction_pct']}%)")
+        self.assertGreaterEqual(k_high["size_usd"], 50.0)
+        self.assertLessEqual(k_high["size_usd"], 100.0)
+        print(f"[TEST Kelly High ($1,000 Equidad)] Size: ${k_high['size_usd']} ({k_high['kelly_fraction_pct']}%)")
 
         k_low = calculate_kelly_size(
-            confidence=75.0, entry_price=0.50, target_price=0.58, stop_loss=0.45, side="BUY", account_equity=10000.0, fraction=0.25
+            confidence=75.0, entry_price=0.50, target_price=0.58, stop_loss=0.45, side="BUY", account_equity=1000.0, fraction=0.25, min_size_usd=10.0, max_size_usd=100.0
         )
         self.assertLess(k_low["size_usd"], k_high["size_usd"])
-        self.assertGreaterEqual(k_low["size_usd"], 50.0)
-        print(f"[TEST Kelly Low] Size: ${k_low['size_usd']} ({k_low['kelly_fraction_pct']}%)")
+        self.assertGreaterEqual(k_low["size_usd"], 10.0)
+        print(f"[TEST Kelly Low ($1,000 Equidad)] Size: ${k_low['size_usd']} ({k_low['kelly_fraction_pct']}%)")
 
     def test_horizon_classification(self):
         now = datetime.now(UTC)

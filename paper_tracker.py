@@ -28,19 +28,19 @@ def calculate_kelly_size(
     target_price: float,
     stop_loss: float,
     side: str = "BUY",
-    account_equity: float = 10000.0,
+    account_equity: float = 1000.0,
     fraction: float = 0.25,
-    min_size_usd: float = 50.0,
-    max_size_usd: float = 1000.0,
+    min_size_usd: float = 10.0,
+    max_size_usd: float = 100.0,
 ) -> Dict[str, Any]:
-    """Calcula el dimensionamiento dinámico de posición mediante Criterio de Kelly Fraccional (Quarter-Kelly).
+    """Calcula el dimensionamiento dinámico de posición mediante Criterio de Kelly Fraccional (Quarter-Kelly) para portfolio de $1,000 USD.
     Fórmula: f* = (p * b - q) / b
     Donde:
       p = probabilidad de éxito (confidence / 100)
       q = 1 - p
       b = ratio beneficio/riesgo (reward / risk)
-    En 75% de confianza: asigna ~1.5% - 2.5% de capital ($150 - $250 USD).
-    En 96% - 98% de confianza: asigna ~8% - 10% de capital ($800 - $1,000 USD).
+    En 75% de confianza: asigna ~1.5% - 2.5% de capital ($15 - $25 USD).
+    En 96% - 98% de confianza: asigna ~8% - 10% de capital ($80 - $100 USD).
     """
     p = max(0.01, min(0.99, confidence / 100.0))
     q = 1.0 - p
@@ -116,8 +116,8 @@ def classify_time_horizon(market: Any) -> Dict[str, Any]:
 class PaperTradingEngine:
     def __init__(self, storage_path: Optional[Path] = None):
         self.storage_path = storage_path or (Path(__file__).resolve().parent / "paper_trades.json")
-        self.initial_balance = 10000.0  # $10,000 USD de capital simulado
-        self.position_size_usd = 250.0  # Fallback base
+        self.initial_balance = 1000.0  # $1,000 USD de capital simulado
+        self.position_size_usd = 25.0  # Fallback base ($25 USD)
         self.trades: Dict[str, Dict[str, Any]] = {}
         self._load_from_disk()
 
@@ -185,7 +185,7 @@ class PaperTradingEngine:
 
         # Dimensionamiento Dinámico Kelly con Multiplicador de Auto-Aprendizaje IA
         closed_pnl = sum(t.get("realized_pnl_usd", 0.0) for t in self.trades.values() if t.get("status") in ("WON", "LOST"))
-        current_equity = max(2000.0, self.initial_balance + closed_pnl)
+        current_equity = max(200.0, self.initial_balance + closed_pnl)
         kelly_data = calculate_kelly_size(
             confidence=confidence,
             entry_price=entry_price,
@@ -194,6 +194,8 @@ class PaperTradingEngine:
             side=side,
             account_equity=current_equity,
             fraction=0.25,
+            min_size_usd=10.0,
+            max_size_usd=100.0,
         )
         
         # Multiplicador dinámico de IA basado en Brier Score histórico
@@ -203,7 +205,7 @@ class PaperTradingEngine:
         except Exception:
             strat_mult = 1.0
 
-        trade_size_usd = round(max(50.0, min(1500.0, kelly_data["size_usd"] * strat_mult)), 2)
+        trade_size_usd = round(max(10.0, min(150.0, kelly_data["size_usd"] * strat_mult)), 2)
         signal["position_size_usd"] = trade_size_usd
         signal["kelly_fraction_pct"] = round(kelly_data["kelly_fraction_pct"] * strat_mult, 2)
         signal["full_kelly_pct"] = kelly_data["full_kelly_pct"]

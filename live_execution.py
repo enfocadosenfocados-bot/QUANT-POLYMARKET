@@ -21,7 +21,7 @@ class LiveExecutionManager:
 
     def __init__(self):
         self.mode: str = "PAPER"  # "PAPER" o "LIVE"
-        self.max_live_trade_usd: float = 50.0  # Límite de seguridad por trade en Live
+        self.max_live_trade_usd: float = 25.0  # Límite de seguridad por trade en Live ($25 USD para cuenta de $1,000)
         self.max_open_live_trades: int = 5
         self.api_key: str = ""
         self.api_secret: str = ""
