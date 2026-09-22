@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from datetime import datetime, timedelta, UTC
 from paper_tracker import calculate_kelly_size, classify_time_horizon, PaperTradingEngine
 
@@ -82,7 +82,8 @@ class TestAdvancedFeatures(unittest.TestCase):
         closed_trade = engine.trades["TEST:M1:Yes:BUY"]
         self.assertEqual(closed_trade["status"], "WON")
         self.assertIn("Trailing Stop activado", closed_trade["close_reason"])
-        print(f"[TEST Trailing Close] Status: {closed_trade['status']}, Reason: {closed_trade['close_reason']}")
+        safe_reason = closed_trade['close_reason'].encode('ascii', errors='replace').decode('ascii')
+        print(f"[TEST Trailing Close] Status: {closed_trade['status']}, Reason: {safe_reason}")
 
     def test_summary_and_equity_curve(self):
         engine = PaperTradingEngine()

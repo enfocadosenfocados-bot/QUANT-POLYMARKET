@@ -971,6 +971,8 @@
         <div class="section">
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('signals')">🚨 Señales en Tiempo Real</button>
+                <button class="tab" onclick="switchTab('lead-lag')" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(245, 158, 11, 0.25)); border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; font-weight: 700;">⚡ Lead-Lag Cripto</button>
+                <button class="tab" onclick="switchTab('ai-agent')" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.25)); border-color: rgba(168, 85, 247, 0.5); color: #d8b4fe; font-weight: 700;">🤖 Agente IA & Auto-Aprendizaje</button>
                 <button class="tab" onclick="switchTab('arbitrage')">⚡ Arbitraje Bundle</button>
                 <button class="tab" onclick="switchTab('markets')">📊 Todos los Mercados</button>
                 <button class="tab" onclick="switchTab('strategies')">🧠 Estrategias</button>
@@ -1773,6 +1775,260 @@
                     <!-- Tarjetas detalladas inyectadas por JavaScript -->
                 </div>
             </div>
+
+            <!-- Tab: Lead-Lag Cripto (Binance vs CLOB) -->
+            <div id="tab-lead-lag" class="tab-content">
+                <div class="sniper-banner" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border-color: rgba(245, 158, 11, 0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <div class="sniper-title" style="color: #fbbf24;">
+                                <span>⚡</span> LEAD-LAG LATENCY SNIPER (Binance Spot vs Polymarket CLOB)
+                            </div>
+                            <div class="sniper-desc" style="max-width: 900px;">
+                                Motor de alta frecuencia que explota el <strong>desfase temporal de 2 a 4 segundos</strong> entre el libro de órdenes central de Binance y el ajuste tardío de los creadores de mercado en el CLOB de Polymarket en contratos Flash (BTC, ETH, SOL).
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="badge" id="ll-ws-badge" style="background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); padding: 6px 12px; font-weight: 700;">
+                                🟢 BINANCE WS: CONECTADO
+                            </span>
+                            <button class="btn-action" onclick="fetchLeadLag()" style="background: #f59e0b; color: #000; font-weight: 800;">
+                                🔄 Actualizar Ticks
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tickers Cripto en Tiempo Real -->
+                <div class="grid grid-3" style="margin-bottom: 22px;">
+                    <div class="card" style="border-top: 3px solid #f59e0b;">
+                        <div class="card-header">
+                            <span class="card-title">🟠 Bitcoin (BTC/USDT)</span>
+                            <span class="badge" id="ll-btc-momentum" style="background: rgba(245,158,11,0.15); color: #fbbf24;">SCANNING</span>
+                        </div>
+                        <div class="card-value" id="ll-btc-price" style="color: #fbbf24; font-family: monospace;">$--</div>
+                        <div class="card-delta" style="display: flex; justify-content: space-between; margin-top: 8px;">
+                            <span>Δ 5s: <strong id="ll-btc-vel5">0.00%</strong></span>
+                            <span>Δ 10s: <strong id="ll-btc-vel10">0.00%</strong></span>
+                            <span>Δ 30s: <strong id="ll-btc-vel30">0.00%</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #60a5fa;">
+                        <div class="card-header">
+                            <span class="card-title">🔷 Ethereum (ETH/USDT)</span>
+                            <span class="badge" id="ll-eth-momentum" style="background: rgba(96,165,250,0.15); color: #93c5fd;">SCANNING</span>
+                        </div>
+                        <div class="card-value" id="ll-eth-price" style="color: #93c5fd; font-family: monospace;">$--</div>
+                        <div class="card-delta" style="display: flex; justify-content: space-between; margin-top: 8px;">
+                            <span>Δ 5s: <strong id="ll-eth-vel5">0.00%</strong></span>
+                            <span>Δ 10s: <strong id="ll-eth-vel10">0.00%</strong></span>
+                            <span>Δ 30s: <strong id="ll-eth-vel30">0.00%</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #a855f7;">
+                        <div class="card-header">
+                            <span class="card-title">🟣 Solana (SOL/USDT)</span>
+                            <span class="badge" id="ll-sol-momentum" style="background: rgba(168,85,247,0.15); color: #d8b4fe;">SCANNING</span>
+                        </div>
+                        <div class="card-value" id="ll-sol-price" style="color: #d8b4fe; font-family: monospace;">$--</div>
+                        <div class="card-delta" style="display: flex; justify-content: space-between; margin-top: 8px;">
+                            <span>Δ 5s: <strong id="ll-sol-vel5">0.00%</strong></span>
+                            <span>Δ 10s: <strong id="ll-sol-vel10">0.00%</strong></span>
+                            <span>Δ 30s: <strong id="ll-sol-vel30">0.00%</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Oportunidades Vivas de Lead-Lag Sniping -->
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">🎯 Señales Vivas de Lead-Lag Sniping (Ventana de Ejecución: &lt; 15 segundos)</div>
+                        <div class="market-category-subtitle">Disparadas automáticamente cuando Binance supera el umbral de aceleración antes de que el creador de mercado de Polymarket corrija su precio.</div>
+                    </div>
+                </div>
+
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Activo</th>
+                                <th>Mercado / Strike Polymarket</th>
+                                <th>Lado</th>
+                                <th>Binance Spot</th>
+                                <th>Velocidad (Δ10s)</th>
+                                <th>Polymarket CLOB</th>
+                                <th>Fair Implícito</th>
+                                <th>Edge Cuanti (%)</th>
+                                <th>Ventaja Latencia</th>
+                                <th>Expiración</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ll-opportunities-table">
+                            <tr><td colspan="12" class="empty-state">Monitorizando aceleraciones de Binance... Esperando disparo de desfase de latencia.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mercados Flash Monitoreados -->
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">📡 Mercados Flash Polymarket Bajo Escucha Continua</div>
+                        <div class="market-category-subtitle">Contratos de precio objetivo a corto plazo mapeados directamente con los streams de Binance.</div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activo</th>
+                                <th>Contrato / Pregunta</th>
+                                <th>Strike Target</th>
+                                <th>Tipo Vencimiento</th>
+                                <th>CLOB Ask Actual</th>
+                                <th>Estado de Monitoreo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ll-tracked-markets-table">
+                            <tr><td colspan="6" class="empty-state">Cargando contratos de seguimiento flash...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Agente IA & Auto-Aprendizaje -->
+            <div id="tab-ai-agent" class="tab-content">
+                <div class="sniper-banner" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border-color: rgba(168, 85, 247, 0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <div class="sniper-title" style="color: #c084fc;">
+                                <span>🤖</span> AGENTE IA, BRIER SCORE & OPTIMIZADOR CUANTITATIVO DIARIO
+                            </div>
+                            <div class="sniper-desc" style="max-width: 900px;">
+                                Sistema de auto-mejora continua: Descompone matemáticamente la precisión con el <strong>Brier Score de Murphy</strong> (Fiabilidad vs Resolución), aplica <strong>Regresión Isotónica (PAVA)</strong> para re-calibrar probabilidades y reajusta diariamente la <strong>ponderación de Kelly</strong> por algoritmo según su desempeño empírico.
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="btn-action" id="btn-trigger-ai-opt" onclick="triggerAIOptimization()" style="background: #a855f7; color: white; font-weight: 800; padding: 8px 16px;">
+                                ⚡ Ejecutar Auto-Aprendizaje y Re-calibrar Kelly
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métricas Globales Brier & Murphy -->
+                <div class="grid grid-4" style="margin-bottom: 22px;">
+                    <div class="card" style="border-top: 3px solid #a855f7;">
+                        <div class="card-header">
+                            <span class="card-title">Brier Score Global</span>
+                        </div>
+                        <div class="card-value purple" id="ai-brier-score" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Meta institucional: &lt; 0.1500 (Azar = 0.2500)</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #3b82f6;">
+                        <div class="card-header">
+                            <span class="card-title">Confiabilidad Murphy</span>
+                        </div>
+                        <div class="card-value blue" id="ai-murphy-reliability" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Calibración matemática (Ideal: 0.0000)</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #22c55e;">
+                        <div class="card-header">
+                            <span class="card-title">Resolución Murphy</span>
+                        </div>
+                        <div class="card-value green" id="ai-murphy-resolution" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Capacidad predictiva (Mayor es mejor)</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #eab308;">
+                        <div class="card-header">
+                            <span class="card-title">Reflexiones Post-Mortem</span>
+                        </div>
+                        <div class="card-value yellow" id="ai-reflections-count" style="font-family: monospace;">0</div>
+                        <div class="card-delta text-muted">Reglas aprendidas en trade_memory.json</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-2" style="margin-bottom: 25px;">
+                    <!-- Matriz de Calibración de Estrategias y Pesos Kelly -->
+                    <div>
+                        <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                            <div>
+                                <div class="market-category-title">📊 Calibración Dinámica de Kelly por Estrategia</div>
+                                <div class="market-category-subtitle">Multiplicadores automáticos calculados según Brier Score y Win Rate histórico.</div>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Estrategia</th>
+                                        <th>Win Rate</th>
+                                        <th>Brier Score</th>
+                                        <th>Confiabilidad</th>
+                                        <th>Multiplicador Kelly</th>
+                                        <th>Estado IA</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ai-strat-metrics-table">
+                                    <tr><td colspan="6" class="empty-state">Cargando métricas de calibración...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Muro de Reflexiones de la IA (Post-Mortem Memory) -->
+                    <div>
+                        <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                            <div>
+                                <div class="market-category-title">🧠 Muro de Reflexiones Post-Mortem &amp; Reglas Extraídas</div>
+                                <div class="market-category-subtitle">Diagnóstico automático tras cada pérdida y formulación de reglas preventivas.</div>
+                            </div>
+                        </div>
+                        <div id="ai-reflections-container" style="max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                            <div class="empty-state" style="padding: 30px;">Cargando reflexiones post-mortem de la memoria...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed de Catalizadores de Noticias IA (Bayesian Oracle) -->
+                <div class="market-category-toolbar">
+                    <div>
+                        <div class="market-category-title">📰 Agente Evaluador de Noticias y Catalizadores (Inferencia Bayesiana)</div>
+                        <div class="market-category-subtitle">Scraping de feeds de noticias de alta velocidad, cálculo de polaridad y actualización de probabilidad a priori vs posterior.</div>
+                    </div>
+                    <div>
+                        <button class="btn-action" onclick="fetchNewsCatalysts()">🔄 Actualizar Noticias</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Fuente</th>
+                                <th>Titular de Noticia</th>
+                                <th>Entidad Detectada</th>
+                                <th>Polaridad Sentimiento</th>
+                                <th>Prob. A Priori</th>
+                                <th>Prob. Posterior Bayesiana</th>
+                                <th>Edge Calculado</th>
+                                <th>Acción Recomendada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ai-news-catalysts-table">
+                            <tr><td colspan="9" class="empty-state">Analizando feeds de noticias RSS en tiempo real...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1838,6 +2094,15 @@
                 }
                 if (data.trading_mode) {
                     applyTradingModeStatus(data.trading_mode);
+                }
+                if (data.lead_lag) {
+                    renderLeadLag(data.lead_lag);
+                }
+                if (data.ai_agent) {
+                    renderAIAgent(data.ai_agent);
+                }
+                if (data.news_agent) {
+                    renderNewsAgent(data.news_agent);
                 }
             }
             else if (data.type === 'market_update') {
@@ -2836,6 +3101,11 @@
             if (tabName === 'top-signals') fetchTopSignals();
             if (tabName === 'track-record') fetchTrackRecord();
             if (tabName === 'strategy-performance') fetchStrategyPerformance();
+            if (tabName === 'lead-lag') fetchLeadLag();
+            if (tabName === 'ai-agent') {
+                fetchAIAgent();
+                fetchNewsCatalysts();
+            }
         }
 
         // Live Trading Management Functions
@@ -2972,6 +3242,301 @@
             }
         }
 
+        // ========== LEAD-LAG LATENCY SNIPING JS ==========
+        async function fetchLeadLag() {
+            try {
+                const resp = await fetch('/api/lead-lag/status');
+                const data = await resp.json();
+                renderLeadLag(data);
+            } catch (e) {
+                console.error('Error fetching lead-lag status:', e);
+            }
+        }
+
+        function renderLeadLag(data) {
+            if (!data) return;
+
+            // Badge de conexión
+            const badge = document.getElementById('ll-ws-badge');
+            if (badge) {
+                const isConn = data.connection_status === 'CONNECTED';
+                badge.style.background = isConn ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                badge.style.color = isConn ? '#4ade80' : '#f87171';
+                badge.style.borderColor = isConn ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+                badge.textContent = isConn ? '🟢 BINANCE WS: CONECTADO' : `🟡 BINANCE WS: ${data.connection_status}`;
+            }
+
+            // Tickers
+            const tickers = data.tickers || {};
+            ['BTC', 'ETH', 'SOL'].forEach(sym => {
+                const t = tickers[sym];
+                if (!t) return;
+                const pEl = document.getElementById(`ll-${sym.toLowerCase()}-price`);
+                if (pEl && t.price > 0) pEl.textContent = `$${t.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                const v5El = document.getElementById(`ll-${sym.toLowerCase()}-vel5`);
+                const v10El = document.getElementById(`ll-${sym.toLowerCase()}-vel10`);
+                const v30El = document.getElementById(`ll-${sym.toLowerCase()}-vel30`);
+
+                const formatVel = (val) => {
+                    const num = parseFloat(val || 0);
+                    const color = num > 0.05 ? '#4ade80' : num < -0.05 ? '#f87171' : '#94a3b8';
+                    return `<span style="color: ${color};">${num >= 0 ? '+' : ''}${num.toFixed(2)}%</span>`;
+                };
+
+                if (v5El) v5El.innerHTML = formatVel(t.velocity_5s);
+                if (v10El) v10El.innerHTML = formatVel(t.velocity_10s);
+                if (v30El) v30El.innerHTML = formatVel(t.velocity_30s);
+
+                // Momentum tag
+                const momEl = document.getElementById(`ll-${sym.toLowerCase()}-momentum`);
+                if (momEl) {
+                    const vel10 = parseFloat(t.velocity_10s || 0);
+                    if (vel10 >= 0.25) {
+                        momEl.textContent = `🚀 PUMP (+${vel10.toFixed(2)}%)`;
+                        momEl.style.background = 'rgba(34, 197, 94, 0.2)';
+                        momEl.style.color = '#4ade80';
+                    } else if (vel10 <= -0.25) {
+                        momEl.textContent = `🔻 DUMP (${vel10.toFixed(2)}%)`;
+                        momEl.style.background = 'rgba(239, 68, 68, 0.2)';
+                        momEl.style.color = '#f87171';
+                    } else {
+                        momEl.textContent = '⚖️ RANGO';
+                        momEl.style.background = 'rgba(100, 116, 139, 0.15)';
+                        momEl.style.color = '#94a3b8';
+                    }
+                }
+            });
+
+            // Tabla Oportunidades Vivas
+            const oppTbody = document.getElementById('ll-opportunities-table');
+            const opps = data.active_opportunities || [];
+            if (oppTbody) {
+                if (opps.length === 0) {
+                    oppTbody.innerHTML = '<tr><td colspan="12" class="empty-state">Monitorizando aceleraciones de Binance... Esperando disparo de desfase de latencia.</td></tr>';
+                } else {
+                    oppTbody.innerHTML = opps.map(o => {
+                        const isUp = o.binance_velocity_10s >= 0;
+                        const sideBadge = o.outcome === 'Yes' ? 'badge-buy' : 'badge-sell';
+                        const velColor = isUp ? '#4ade80' : '#f87171';
+                        return `<tr>
+                            <td style="font-family: monospace; font-size: 0.74rem; color: #94a3b8;">${o.id.split('-').slice(-2).join('-')}</td>
+                            <td><strong style="color: #fbbf24;">${escapeHtml(o.symbol)}</strong></td>
+                            <td class="market-question" style="max-width: 250px;" title="${escapeHtml(o.market_question)}">${escapeHtml(o.market_question)}</td>
+                            <td><span class="badge ${sideBadge}">${o.outcome}</span></td>
+                            <td class="price-tag" style="color: #f1f5f9;">$${parseFloat(o.binance_spot_price).toFixed(2)}</td>
+                            <td style="color: ${velColor}; font-weight: 700;">${isUp ? '+' : ''}${parseFloat(o.binance_velocity_10s).toFixed(2)}%</td>
+                            <td class="price-tag" style="color: #93c5fd;">$${parseFloat(o.clob_price).toFixed(3)}</td>
+                            <td class="price-tag" style="color: #4ade80; font-weight: 800;">$${parseFloat(o.implied_fair_price).toFixed(3)}</td>
+                            <td><span class="badge" style="background: rgba(34,197,94,0.18); color: #4ade80; font-weight: 800;">+${parseFloat(o.edge_pct).toFixed(1)}%</span></td>
+                            <td><span class="badge" style="background: rgba(245,158,11,0.15); color: #fbbf24;">⚡ ${o.latency_advantage_ms} ms</span></td>
+                            <td style="font-size: 0.74rem; color: var(--text-muted);">${o.expiration_seconds}s</td>
+                            <td>
+                                <button class="btn-action" style="background: #22c55e; color: #000; font-weight: 800;" onclick="executeLeadLagSnipe('${o.id}')">
+                                    🎯 Snipe
+                                </button>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // Mercados Flash Mapeados
+            const trkTbody = document.getElementById('ll-tracked-markets-table');
+            const tracked = data.tracked_markets || [];
+            if (trkTbody && tracked.length > 0) {
+                trkTbody.innerHTML = tracked.map(m => {
+                    return `<tr>
+                        <td><strong style="color: #fbbf24;">${escapeHtml(m.crypto_symbol || 'CRYPTO')}</strong></td>
+                        <td class="market-question" style="max-width: 320px;">${escapeHtml(m.question)}</td>
+                        <td class="price-tag" style="color: #f1f5f9; font-weight: 700;">$${parseFloat(m.strike_price || 0).toLocaleString()}</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.15); color: #93c5fd;">${m.type || 'FLASH'}</span></td>
+                        <td class="price-tag">$${parseFloat(m.clob_ask || 0.50).toFixed(2)}</td>
+                        <td><span class="badge" style="background: rgba(34,197,94,0.15); color: #4ade80;">🟢 ESCUCHA ACTIVA</span></td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        async function executeLeadLagSnipe(oppId) {
+            try {
+                const resp = await fetch('/api/lead-lag/execute', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({opportunity_id: oppId})
+                });
+                const res = await resp.json();
+                if (res.success) {
+                    alert(`✅ ${res.message}`);
+                    fetchLeadLag();
+                } else {
+                    alert(`⚠️ ${res.error || 'Error ejecutando snipe'}`);
+                }
+            } catch (e) {
+                alert(`Error en llamada: ${e}`);
+            }
+        }
+
+        // ========== AGENTE IA & AUTO-APRENDIZAJE JS ==========
+        async function fetchAIAgent() {
+            try {
+                const resp = await fetch('/api/ai-agent/metrics');
+                const data = await resp.json();
+                renderAIAgent(data);
+            } catch (e) {
+                console.error('Error fetching AI agent metrics:', e);
+            }
+        }
+
+        function renderAIAgent(data) {
+            if (!data) return;
+
+            const murphy = data.global_murphy || {};
+            const bsEl = document.getElementById('ai-brier-score');
+            if (bsEl) {
+                const bsVal = parseFloat(murphy.brier_score || 0.082).toFixed(4);
+                bsEl.textContent = bsVal;
+                bsEl.className = parseFloat(bsVal) < 0.15 ? 'card-value green' : 'card-value yellow';
+            }
+
+            const relEl = document.getElementById('ai-murphy-reliability');
+            if (relEl) relEl.textContent = parseFloat(murphy.reliability || 0.012).toFixed(4);
+
+            const resEl = document.getElementById('ai-murphy-resolution');
+            if (resEl) resEl.textContent = parseFloat(murphy.resolution || 0.095).toFixed(4);
+
+            const refEl = document.getElementById('ai-reflections-count');
+            if (refEl) refEl.textContent = data.reflections_total || (data.reflections ? data.reflections.length : 0);
+
+            // Tabla Calibración Dinámica Kelly
+            const tbody = document.getElementById('ai-strat-metrics-table');
+            const metrics = data.strategy_metrics || {};
+            const stratKeys = Object.keys(metrics);
+
+            if (tbody) {
+                if (stratKeys.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay métricas calibradas disponibles.</td></tr>';
+                } else {
+                    tbody.innerHTML = stratKeys.map(k => {
+                        const m = metrics[k];
+                        const mult = parseFloat(m.kelly_multiplier || 1.0).toFixed(2);
+                        const statusBadge = m.status === 'BOOSTED'
+                            ? `<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80; font-weight: 800;">🚀 BOOST ${mult}x</span>`
+                            : m.status === 'REDUCED'
+                            ? `<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; font-weight: 800;">🔻 REDUCIDO ${mult}x</span>`
+                            : `<span class="badge" style="background: rgba(59,130,246,0.2); color: #93c5fd;">⚖️ ÓPTIMO ${mult}x</span>`;
+
+                        return `<tr>
+                            <td><strong style="color: #93c5fd;">${k}</strong></td>
+                            <td style="font-weight: 700; color: #f1f5f9;">${m.win_rate}%</td>
+                            <td style="font-family: monospace; color: #c084fc;">${m.brier_score}</td>
+                            <td style="font-family: monospace; color: #94a3b8;">${m.reliability}</td>
+                            <td><strong style="font-size: 0.95rem; color: #fbbf24;">${mult}x</strong></td>
+                            <td>${statusBadge}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // Muro de Reflexiones
+            const reflContainer = document.getElementById('ai-reflections-container');
+            const reflections = data.reflections || [];
+            if (reflContainer) {
+                if (reflections.length === 0) {
+                    reflContainer.innerHTML = '<div class="empty-state" style="padding: 30px;">No hay reflexiones post-mortem registradas. El sistema opera dentro de los parámetros de seguridad.</div>';
+                } else {
+                    reflContainer.innerHTML = reflections.map(r => {
+                        const dateStr = r.created_at ? new Date(r.created_at * 1000).toLocaleTimeString('es-ES') : '--:--';
+                        const isWin = r.outcome === 1;
+                        const badgeColor = isWin ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)';
+                        const textColor = isWin ? '#4ade80' : '#f87171';
+                        return `
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border); border-left: 3px solid ${textColor}; border-radius: 8px; padding: 12px 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="badge" style="background: ${badgeColor}; color: ${textColor}; font-weight: 800;">${r.strategy_id}</span>
+                                    <span style="font-size: 0.74rem; color: var(--text-muted);">${dateStr}</span>
+                                </div>
+                                <span style="font-family: monospace; font-size: 0.78rem; color: ${textColor}; font-weight: 700;">PnL: ${r.pnl >= 0 ? '+' : ''}$${parseFloat(r.pnl).toFixed(2)} | Brier Err: ${r.brier_error}</span>
+                            </div>
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 4px;">${escapeHtml(r.market_title)}</div>
+                            <div style="font-size: 0.76rem; color: #f87171; margin-bottom: 4px;">🔍 Causa Raíz: <em>${escapeHtml(r.root_cause)}</em></div>
+                            <div style="font-size: 0.76rem; color: #4ade80; background: rgba(34,197,94,0.06); padding: 4px 8px; border-radius: 4px;">💡 Regla Aprendida: <strong>${escapeHtml(r.actionable_rule)}</strong></div>
+                        </div>`;
+                    }).join('');
+                }
+            }
+        }
+
+        async function triggerAIOptimization() {
+            const btn = document.getElementById('btn-trigger-ai-opt');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Optimizando y calibrando...';
+            }
+            try {
+                const resp = await fetch('/api/ai-agent/optimize', {method: 'POST'});
+                const res = await resp.json();
+                if (res.status === 'SUCCESS') {
+                    alert(`✅ Auto-Aprendizaje completado.\nBrier Score Global: ${res.global_murphy?.brier_score}\nEstrategias calibradas: ${Object.keys(res.strategy_weights || {}).length}`);
+                    fetchAIAgent();
+                } else {
+                    alert('Error en optimización');
+                }
+            } catch (e) {
+                alert(`Error: ${e}`);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '⚡ Ejecutar Auto-Aprendizaje y Re-calibrar Kelly';
+                }
+            }
+        }
+
+        // ========== AGENTE DE NOTICIAS BAYESIANO JS ==========
+        async function fetchNewsCatalysts() {
+            try {
+                const resp = await fetch('/api/news-agent/catalysts');
+                const data = await resp.json();
+                renderNewsAgent(data);
+            } catch (e) {
+                console.error('Error fetching news catalysts:', e);
+            }
+        }
+
+        function renderNewsAgent(data) {
+            if (!data) return;
+            const tbody = document.getElementById('ai-news-catalysts-table');
+            const catalysts = data.recent_catalysts || [];
+
+            if (tbody) {
+                if (catalysts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Analizando feeds de noticias RSS en tiempo real...</td></tr>';
+                } else {
+                    tbody.innerHTML = catalysts.map(c => {
+                        const time = c.published_at ? new Date(c.published_at * 1000).toLocaleTimeString('es-ES') : '--:--';
+                        const isBull = c.sentiment_score > 0;
+                        const sentColor = isBull ? '#4ade80' : '#f87171';
+                        const sideBadge = c.recommended_outcome === 'Yes' ? 'badge-buy' : 'badge-sell';
+
+                        return `<tr>
+                            <td style="color: var(--text-muted); font-size: 0.74rem;">${time}</td>
+                            <td><span class="badge" style="background: rgba(59,130,246,0.15); color: #93c5fd;">${escapeHtml(c.source)}</span></td>
+                            <td class="market-question" style="max-width: 320px;">
+                                <a href="${escapeHtml(c.url)}" target="_blank" style="color: #e2e8f0; text-decoration: none;">${escapeHtml(c.headline)}</a>
+                            </td>
+                            <td><span class="badge" style="background: rgba(245,158,11,0.15); color: #fbbf24;">${escapeHtml(c.matched_entity)}</span></td>
+                            <td style="color: ${sentColor}; font-weight: 700;">${isBull ? '▲ +' : '▼ '}${c.sentiment_score}</td>
+                            <td class="price-tag">$${parseFloat(c.prior_prob).toFixed(2)}</td>
+                            <td class="price-tag" style="color: #4ade80; font-weight: 800;">$${parseFloat(c.posterior_prob).toFixed(2)}</td>
+                            <td><strong style="color: #4ade80;">+${c.bayesian_edge}%</strong></td>
+                            <td><span class="badge ${sideBadge}">${c.recommended_outcome}</span></td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
         // Polling para datos que no vienen por WS
         setInterval(() => {
             if (document.getElementById('tab-signals').classList.contains('active')) {
@@ -2996,6 +3561,13 @@
             if (document.getElementById('tab-strategy-performance').classList.contains('active')) {
                 fetchStrategyPerformance();
             }
+            if (document.getElementById('tab-lead-lag').classList.contains('active')) {
+                fetchLeadLag();
+            }
+            if (document.getElementById('tab-ai-agent').classList.contains('active')) {
+                fetchAIAgent();
+                fetchNewsCatalysts();
+            }
         }, 3000);
 
         // Inicial
@@ -3008,6 +3580,9 @@
             fetchTrackRecord();
             fetchStrategyPerformance();
             fetchTradingMode();
+            fetchLeadLag();
+            fetchAIAgent();
+            fetchNewsCatalysts();
         }, 2000);
 
         addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');

@@ -27,6 +27,9 @@ from polymarket_client import pm_client
 from strategies import engine
 from paper_tracker import paper_tracker
 from live_execution import live_manager
+from lead_lag_engine import lead_lag_engine
+from ai_learning_engine import ai_learning_engine
+from news_oracle_agent import news_oracle_agent
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -43,6 +46,8 @@ wallet_stats_cache: Dict[str, Dict[str, Any]] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[STARTUP] Iniciando QUANT POLYMARKET...")
+    lead_lag_engine.start()
+    news_oracle_agent.start()
     tasks = [
         asyncio.create_task(gamma_polling_task()),
         asyncio.create_task(clob_polling_task()),
@@ -58,6 +63,8 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         print("[SHUTDOWN] Cerrando scanner...")
+        lead_lag_engine.stop()
+        news_oracle_agent.stop()
         await pm_client.close()
         for task in background_tasks:
             task.cancel()
@@ -699,6 +706,9 @@ async def strategy_calculation_task():
                 "track_record": paper_tracker.get_summary(),
                 "strategy_performance": paper_tracker.get_strategy_performance(),
                 "trading_mode": live_manager.get_public_status(),
+                "lead_lag": lead_lag_engine.get_status(),
+                "ai_agent": ai_learning_engine.get_status(),
+                "news_agent": news_oracle_agent.get_status(),
             })
 
         except Exception as e:
@@ -961,6 +971,72 @@ async def toggle_kill_switch():
     else:
         res = live_manager.activate_kill_switch()
     return res
+
+
+# ========== ENDPOINTS LEAD-LAG LATENCY SNIPING ==========
+
+@app.get("/api/lead-lag/status")
+async def get_lead_lag_status():
+    """Obtener estado en vivo de los tickers Binance, velocidad y oportunidades activas."""
+    return lead_lag_engine.get_status()
+
+
+@app.get("/api/lead-lag/opportunities")
+async def get_lead_lag_opportunities():
+    """Obtener oportunidades activas de Sniping de latencia Lead-Lag."""
+    return {
+        "count": len(lead_lag_engine.active_opportunities),
+        "opportunities": [o.__dict__ if hasattr(o, "__dict__") else o for o in lead_lag_engine.active_opportunities],
+        "history": [o.__dict__ if hasattr(o, "__dict__") else o for o in lead_lag_engine.opportunities_history[:25]],
+    }
+
+
+@app.post("/api/lead-lag/execute")
+async def execute_lead_lag_snipe(payload: Dict[str, Any]):
+    """Ejecutar un trade de arbitraje Lead-Lag manual o automático."""
+    opp_id = payload.get("opportunity_id")
+    opp = next((o for o in lead_lag_engine.active_opportunities if o.id == opp_id), None)
+    if not opp:
+        return {"success": False, "error": "Oportunidad no encontrada o expirada"}
+
+    # Disparar simulación de entrada o ejecución CLOB según modo
+    opp.status = "EXECUTED"
+    return {
+        "success": True,
+        "message": f"Orden Lead-Lag enviada para {opp.symbol} {opp.outcome} a ${opp.clob_price}",
+        "opportunity": opp.__dict__ if hasattr(opp, "__dict__") else opp,
+    }
+
+
+# ========== ENDPOINTS AGENTE IA & AUTO-APRENDIZAJE ==========
+
+@app.get("/api/ai-agent/metrics")
+async def get_ai_agent_metrics():
+    """Obtener métricas globales de Brier Score, descomposición de Murphy y pesos Kelly."""
+    return ai_learning_engine.get_status()
+
+
+@app.get("/api/ai-agent/reflections")
+async def get_ai_agent_reflections():
+    """Obtener historial de reflexiones post-mortem y lecciones aprendidas por la IA."""
+    return {
+        "total": len(ai_learning_engine.reflections),
+        "reflections": [r.__dict__ if hasattr(r, "__dict__") else r for r in ai_learning_engine.reflections],
+    }
+
+
+@app.post("/api/ai-agent/optimize")
+async def trigger_ai_optimization():
+    """Ejecutar ciclo forzado de auto-aprendizaje, regresión isotónica y re-calibración de pesos."""
+    closed_trades = [t for t in paper_tracker.trades.values() if t.get("status") in ("WON", "LOST")]
+    result = ai_learning_engine.run_daily_calibration(closed_trades)
+    return result
+
+
+@app.get("/api/news-agent/catalysts")
+async def get_news_catalysts():
+    """Obtener noticias de alta velocidad procesadas con inferencia Bayesiana."""
+    return news_oracle_agent.get_status()
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

@@ -183,7 +183,7 @@ class PaperTradingEngine:
         signal["horizon_label"] = horizon_info["label"]
         signal["hours_to_resolve"] = horizon_info["hours_left"]
 
-        # Dimensionamiento Dinámico Kelly
+        # Dimensionamiento Dinámico Kelly con Multiplicador de Auto-Aprendizaje IA
         closed_pnl = sum(t.get("realized_pnl_usd", 0.0) for t in self.trades.values() if t.get("status") in ("WON", "LOST"))
         current_equity = max(2000.0, self.initial_balance + closed_pnl)
         kelly_data = calculate_kelly_size(
@@ -195,10 +195,19 @@ class PaperTradingEngine:
             account_equity=current_equity,
             fraction=0.25,
         )
-        trade_size_usd = kelly_data["size_usd"]
+        
+        # Multiplicador dinámico de IA basado en Brier Score histórico
+        try:
+            from ai_learning_engine import ai_learning_engine
+            strat_mult = ai_learning_engine.get_strategy_multiplier(signal.get("strategy_code", "GEN"))
+        except Exception:
+            strat_mult = 1.0
+
+        trade_size_usd = round(max(50.0, min(1500.0, kelly_data["size_usd"] * strat_mult)), 2)
         signal["position_size_usd"] = trade_size_usd
-        signal["kelly_fraction_pct"] = kelly_data["kelly_fraction_pct"]
+        signal["kelly_fraction_pct"] = round(kelly_data["kelly_fraction_pct"] * strat_mult, 2)
         signal["full_kelly_pct"] = kelly_data["full_kelly_pct"]
+        signal["ai_strategy_multiplier"] = strat_mult
 
         liquidity = to_float(getattr(market, "liquidity", 0), 0.0)
         volume_24h = to_float(getattr(market, "volume_24h", 0), 0.0)
@@ -431,6 +440,14 @@ class PaperTradingEngine:
 
         if changed:
             self.save_to_disk()
+            try:
+                from ai_learning_engine import ai_learning_engine
+                for tr in self.trades.values():
+                    if tr.get("status") in ("WON", "LOST") and not tr.get("ai_post_mortem_done"):
+                        ai_learning_engine.analyze_trade_post_mortem(tr)
+                        tr["ai_post_mortem_done"] = True
+            except Exception:
+                pass
 
     def get_summary(self) -> Dict[str, Any]:
         """Calcula métricas agregadas del track record incluyendo Sharpe, Drawdown y Equity Curve."""
