@@ -31,6 +31,8 @@ from lead_lag_engine import lead_lag_engine
 from ai_learning_engine import ai_learning_engine
 from news_oracle_agent import news_oracle_agent
 from quant_ml_engine import quant_ml
+from black_scholes_digital import bs_digital_engine
+from vpin_microstructure import vpin_manager
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -526,6 +528,12 @@ async def whale_tracking_task():
                             market_id = mid
                             break
                 if market_id:
+                    try:
+                        p_val = float(trade.get("price") or 0.50)
+                        v_val = float(_trade_notional(trade) or 100.0)
+                        vpin_manager.record_market_trade(market_id, p_val, v_val)
+                    except Exception:
+                        pass
                     await registry.set_whale_signal(market_id, {
                         **enriched,
                         "side": str(trade.get("side") or "BUY").upper(),
@@ -1085,6 +1093,20 @@ async def get_combinatorial_arb():
         "total": len(quant_ml.combinatorial.opportunities),
         "opportunities": [asdict(o) for o in quant_ml.combinatorial.opportunities],
     }
+
+
+# ========== ENDPOINTS DERIVADOS Y MICROESTRUCTURA DE ALTA FRECUENCIA ==========
+
+@app.get("/api/derivatives/black-scholes-signals")
+async def get_black_scholes_signals():
+    """Pricing analítico exacto de Opciones Binarias / Digitales con Black-Scholes N(d2)."""
+    return bs_digital_engine.get_status()
+
+
+@app.get("/api/microstructure/vpin-status")
+async def get_vpin_status():
+    """Índice VPIN de toxicidad institucional O(1) y Kyle's Lambda (López de Prado)."""
+    return vpin_manager.get_status()
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

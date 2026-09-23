@@ -232,11 +232,20 @@ class PaperTradingEngine:
         except Exception:
             strat_mult = 1.0
 
-        trade_size_usd = round(max(10.0, min(150.0, kelly_data["size_usd"] * strat_mult)), 2)
+        # Control Activo de Drawdown (Continuous Drawdown-Constrained Kelly):
+        # Si el portfolio entra en racha negativa (drawdown > 0), el sizing se reduce suavemente
+        # para blindar matemáticamente la cuenta de $1,000 USD contra rachas adversas.
+        peak_equity = max(self.initial_balance, self.initial_balance + max(0.0, closed_pnl))
+        current_dd = max(0.0, (peak_equity - current_equity) / peak_equity) if peak_equity > 0 else 0.0
+        drawdown_factor = max(0.15, min(1.0, 1.0 - (current_dd / 0.08)))  # 8% max drawdown tolerance
+
+        trade_size_usd = round(max(10.0, min(150.0, kelly_data["size_usd"] * strat_mult * drawdown_factor)), 2)
         signal["position_size_usd"] = trade_size_usd
-        signal["kelly_fraction_pct"] = round(kelly_data["kelly_fraction_pct"] * strat_mult, 2)
+        signal["kelly_fraction_pct"] = round(kelly_data["kelly_fraction_pct"] * strat_mult * drawdown_factor, 2)
         signal["full_kelly_pct"] = kelly_data["full_kelly_pct"]
         signal["ai_strategy_multiplier"] = strat_mult
+        signal["drawdown_protection_factor"] = round(drawdown_factor, 2)
+        signal["current_drawdown_pct"] = round(current_dd * 100.0, 2)
 
         liquidity = to_float(getattr(market, "liquidity", 0), 0.0)
         volume_24h = to_float(getattr(market, "volume_24h", 0), 0.0)

@@ -2204,6 +2204,68 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Radar de Opciones Digitales con Black-Scholes N(d2) -->
+                <div class="market-category-toolbar" style="margin-top: 25px; margin-bottom: 12px;">
+                    <div>
+                        <div class="market-category-title">⚡ Radar de Opciones Digitales Black-Scholes N(d₂) (Cálculo Analítico &lt; 5 µs)</div>
+                        <div class="market-category-subtitle">Calcula el precio justo matemático exacto P_fair = N(d2) usando el spot continuo de Binance y la volatilidad implícita institucional. Detecta ineficiencias de mercado puras.</div>
+                    </div>
+                    <div>
+                        <button class="btn-action" onclick="fetchBlackScholesSignals()">🔄 Actualizar Black-Scholes</button>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activo</th>
+                                <th>Spot Binance (S₀)</th>
+                                <th>Strike (K)</th>
+                                <th>Minutos Restantes</th>
+                                <th>Vol. Implícita (σ)</th>
+                                <th>d₂</th>
+                                <th>Prob. Justa P_fair N(d₂)</th>
+                                <th>Precio CLOB</th>
+                                <th>Edge / Discrepancia</th>
+                                <th>Acción Recomendada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ml-bs-table">
+                            <tr><td colspan="10" class="empty-state">Calculando fórmulas analíticas de Black-Scholes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Monitor de Microestructura VPIN (López de Prado) -->
+                <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                    <div>
+                        <div class="market-category-title">🚨 Monitor de Toxicidad de Flujo VPIN (Volume-Synchronized Probability of Informed Trading)</div>
+                        <div class="market-category-subtitle">Clasificación O(1) de volumen en cubos de $500 USD. Detecta acumulación sigilosa de insiders (VPIN &gt; 65%) y calcula el impacto Kyle's Lambda.</div>
+                    </div>
+                    <div>
+                        <button class="btn-action" onclick="fetchVPINStatus()">🔄 Actualizar VPIN</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mercado Polymarket</th>
+                                <th>Índice VPIN</th>
+                                <th>Nivel de Toxicidad</th>
+                                <th>Iniciativa de Flujo</th>
+                                <th>Kyle's Lambda (Impacto / $1k)</th>
+                                <th>Cubos Procesados</th>
+                                <th>Volumen Total ($)</th>
+                                <th>Alerta Insider</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ml-vpin-table">
+                            <tr><td colspan="8" class="empty-state">Monitorizando flujo de órdenes en tiempo real...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -3286,6 +3348,8 @@
                 fetchQuantML();
                 fetchConformalSignals();
                 fetchCombinatorialArb();
+                fetchBlackScholesSignals();
+                fetchVPINStatus();
             }
         }
 
@@ -3925,8 +3989,108 @@
                 fetchQuantML();
                 fetchConformalSignals();
                 fetchCombinatorialArb();
+                fetchBlackScholesSignals();
+                fetchVPINStatus();
             }
         }, 3000);
+
+        // ========== BLACK-SCHOLES DIGITAL OPTIONS JS ==========
+        async function fetchBlackScholesSignals() {
+            try {
+                const resp = await fetch('/api/derivatives/black-scholes-signals');
+                const data = await resp.json();
+                renderBlackScholes(data);
+            } catch (e) {
+                console.error('Error fetching BS signals:', e);
+            }
+        }
+
+        function renderBlackScholes(data) {
+            if (!data) return;
+            const tbody = document.getElementById('ml-bs-table');
+            const contracts = data.contracts || [];
+
+            if (tbody) {
+                if (contracts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No hay contratos Flash sincronizados con tickers de Binance.</td></tr>';
+                } else {
+                    tbody.innerHTML = contracts.map(c => {
+                        const isBuyYes = c.recommended_side === 'BUY_YES';
+                        const isBuyNo = c.recommended_side === 'BUY_NO';
+                        const sideBadge = isBuyYes
+                            ? `<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80; font-weight: 800;">🚀 BUY YES</span>`
+                            : (isBuyNo
+                                ? `<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; font-weight: 800;">🔻 BUY NO</span>`
+                                : `<span class="badge" style="background: rgba(148,163,184,0.15); color: #94a3b8;">⚖️ FAIR</span>`);
+
+                        const edgeBadge = c.arbitrage_active
+                            ? `<strong style="color: #4ade80; font-size: 0.95rem;">+${c.mispricing_edge_pct}%</strong>`
+                            : `<span style="color: var(--text-muted);">${c.mispricing_edge_pct}%</span>`;
+
+                        return `<tr>
+                            <td><strong style="color: #93c5fd;">${c.symbol}</strong></td>
+                            <td style="font-family: monospace; color: #fbbf24;">$${c.spot_price.toLocaleString()}</td>
+                            <td style="font-family: monospace; color: #cbd5e1;">$${c.strike_price.toLocaleString()}</td>
+                            <td style="color: var(--text-muted);">${c.minutes_left}m</td>
+                            <td style="font-family: monospace; color: #a78bfa;">${(c.implied_volatility * 100).toFixed(0)}%</td>
+                            <td style="font-family: monospace; color: #94a3b8;">${c.d2}</td>
+                            <td style="font-family: monospace; font-weight: 700; color: #38bdf8;">${(c.fair_yes_prob * 100).toFixed(1)}%</td>
+                            <td class="price-tag">$${parseFloat(c.clob_yes_price).toFixed(2)}</td>
+                            <td>${edgeBadge}</td>
+                            <td>${sideBadge}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
+        // ========== VPIN MICROSTRUCTURE JS ==========
+        async function fetchVPINStatus() {
+            try {
+                const resp = await fetch('/api/microstructure/vpin-status');
+                const data = await resp.json();
+                renderVPIN(data);
+            } catch (e) {
+                console.error('Error fetching VPIN status:', e);
+            }
+        }
+
+        function renderVPIN(data) {
+            if (!data) return;
+            const tbody = document.getElementById('ml-vpin-table');
+            const readings = data.recent_readings || [];
+
+            if (tbody) {
+                if (readings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Monitorizando flujo de órdenes de ballenas para cálculo VPIN...</td></tr>';
+                } else {
+                    tbody.innerHTML = readings.map(r => {
+                        const isToxic = r.toxicity_level === 'INSIDER_TOXIC_FLOW';
+                        const isMod = r.toxicity_level === 'MODERATE_FLOW';
+                        const toxBadge = isToxic
+                            ? `<span class="badge" style="background: rgba(239,68,68,0.25); color: #f87171; font-weight: 800;">🚨 INSIDER TOXIC</span>`
+                            : (isMod
+                                ? `<span class="badge" style="background: rgba(234,179,8,0.18); color: #fde047; font-weight: 700;">⚠️ MODERADO</span>`
+                                : `<span class="badge" style="background: rgba(34,197,94,0.15); color: #4ade80;">🟢 RETAIL NOISE</span>`);
+
+                        const alertBadge = r.alert_triggered
+                            ? `<span class="badge" style="background: rgba(239,68,68,0.3); color: #f87171; font-weight: 800;">ALERTA ACTIVA</span>`
+                            : `<span style="color: var(--text-muted); font-size: 0.74rem;">Normal</span>`;
+
+                        return `<tr>
+                            <td style="font-family: monospace; font-size: 0.78rem; color: #cbd5e1;">${escapeHtml(r.market_id.substring(0, 24))}</td>
+                            <td style="font-family: monospace; font-weight: 800; color: ${r.vpin_score >= 0.65 ? '#f87171' : '#34d399'};">${(r.vpin_score * 100).toFixed(1)}%</td>
+                            <td>${toxBadge}</td>
+                            <td><span class="badge ${r.flow_direction === 'NET_BUYING' ? 'badge-buy' : 'badge-sell'}">${r.flow_direction}</span></td>
+                            <td style="font-family: monospace; color: #a78bfa;">$${r.kyles_lambda}</td>
+                            <td style="color: var(--text-muted); font-family: monospace;">${r.completed_buckets}</td>
+                            <td style="font-family: monospace; color: #fbbf24;">$${r.total_volume_processed.toLocaleString()}</td>
+                            <td>${alertBadge}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
 
         // Inicial
         setTimeout(() => {
@@ -3944,6 +4108,8 @@
             fetchQuantML();
             fetchConformalSignals();
             fetchCombinatorialArb();
+            fetchBlackScholesSignals();
+            fetchVPINStatus();
         }, 2000);
 
         addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');
