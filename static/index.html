@@ -973,6 +973,7 @@
                 <button class="tab active" onclick="switchTab('signals')">🚨 Señales en Tiempo Real</button>
                 <button class="tab" onclick="switchTab('lead-lag')" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(245, 158, 11, 0.25)); border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; font-weight: 700;">⚡ Lead-Lag Cripto</button>
                 <button class="tab" onclick="switchTab('ai-agent')" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.25)); border-color: rgba(168, 85, 247, 0.5); color: #d8b4fe; font-weight: 700;">🤖 Agente IA & Auto-Aprendizaje</button>
+                <button class="tab" onclick="switchTab('quant-ml')" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25)); border-color: rgba(16, 185, 129, 0.5); color: #34d399; font-weight: 800;">🧠 Quant ML & Bandits</button>
                 <button class="tab" onclick="switchTab('arbitrage')">⚡ Arbitraje Bundle</button>
                 <button class="tab" onclick="switchTab('markets')">📊 Todos los Mercados</button>
                 <button class="tab" onclick="switchTab('strategies')">🧠 Estrategias</button>
@@ -2028,6 +2029,178 @@
                         </thead>
                         <tbody id="ai-news-catalysts-table">
                             <tr><td colspan="9" class="empty-state">Analizando feeds de noticias RSS en tiempo real...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Quant ML & Bandits (LinUCB, Conformal Prediction, OFI, Arbitraje Combinatorio) -->
+            <div id="tab-quant-ml" class="tab-content">
+                <div class="sniper-banner" style="background: linear-gradient(135deg, rgba(6, 78, 59, 0.4), rgba(15, 23, 42, 0.95)); border-color: rgba(16, 185, 129, 0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <div class="sniper-title" style="color: #34d399;">
+                                <span>🧠</span> QUANT ML & CONTEXTUAL BANDITS (Reinforcement Learning & Conformal Prediction)
+                            </div>
+                            <div class="sniper-desc" style="max-width: 950px;">
+                                Meta-modelo cuantitativo institucional: Asignación adaptativa de capital mediante <strong>LinUCB Contextual Bandits</strong> según el régimen de mercado (volatilidad BTC, hora UTC, spreads CLOB), <strong>Conformal Prediction con cobertura matemática garantizada al 95%</strong> (elimina falsos positivos), análisis de microestructura <strong>Order Flow Imbalance (OFI)</strong> y escáner de <strong>Arbitraje Combinatorio libre de riesgo</strong>.
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 6px 12px; font-weight: 800;">
+                                ⚡ LINUCB BANDIT: ACTIVO
+                            </span>
+                            <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); padding: 6px 12px; font-weight: 700;">
+                                🛡️ CONFORMAL: 95% COBERTURA
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards de Contexto de Mercado Cuantitativo y Conformal Prediction -->
+                <div class="grid grid-4" style="margin-bottom: 22px;">
+                    <div class="card" style="border-top: 3px solid #10b981;">
+                        <div class="card-header">
+                            <span class="card-title">Volatilidad BTC (Contexto f₀)</span>
+                        </div>
+                        <div class="card-value green" id="ml-ctx-vol" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Aceleración normalizada [-1, +1]</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #3b82f6;">
+                        <div class="card-header">
+                            <span class="card-title">Spread CLOB (Contexto f₁)</span>
+                        </div>
+                        <div class="card-value blue" id="ml-ctx-spread" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Fricción de liquidez normalizada</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #a855f7;">
+                        <div class="card-header">
+                            <span class="card-title">Cuantil Conforme q̂ (95%)</span>
+                        </div>
+                        <div class="card-value purple" id="ml-conformal-q" style="font-family: monospace;">0.0000</div>
+                        <div class="card-delta text-muted">Margen empírico de no-conformidad</div>
+                    </div>
+
+                    <div class="card" style="border-top: 3px solid #f59e0b;">
+                        <div class="card-header">
+                            <span class="card-title">Tasa de Admisión Conforme</span>
+                        </div>
+                        <div class="card-value yellow" id="ml-conformal-rate" style="font-family: monospace;">0.0%</div>
+                        <div class="card-delta text-muted" id="ml-conformal-counts">0 / 0 evaluadas (filtra ruido)</div>
+                    </div>
+                </div>
+
+                <!-- Grid 2: LinUCB Bandits vs OFI Engine -->
+                <div class="grid grid-2" style="margin-bottom: 25px;">
+                    <!-- LinUCB Strategy Matrix -->
+                    <div>
+                        <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                            <div>
+                                <div class="market-category-title">🎯 LinUCB Bandits: Asignación Adaptativa de Capital ($1,000 USD Base)</div>
+                                <div class="market-category-subtitle">Puntuación UCB de exploración vs explotación y multiplicador continuo de posición.</div>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Estrategia</th>
+                                        <th>UCB Score</th>
+                                        <th>Multiplicador Capital</th>
+                                        <th>Trades Históricos</th>
+                                        <th>Estado Bandit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ml-bandit-table">
+                                    <tr><td colspan="5" class="empty-state">Inicializando pesos LinUCB...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Order Flow Imbalance (OFI) -->
+                    <div>
+                        <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                            <div>
+                                <div class="market-category-title">🌊 Order Flow Imbalance (OFI) en CLOB Polymarket</div>
+                                <div class="market-category-subtitle">Monitoreo de deltas de liquidez en niveles L2 (anticipa presión compradora/vendedora).</div>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mercado</th>
+                                        <th>Presión de Flujo</th>
+                                        <th>Desbalance L2</th>
+                                        <th>OFI Neto ($)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ml-ofi-table">
+                                    <tr><td colspan="4" class="empty-state">Esperando deltas de libro L2...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Radar de Señales Conformal Prediction (Filtro 95% Cobertura) -->
+                <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                    <div>
+                        <div class="market-category-title">🛡️ Radar de Señales Conformal Prediction (Garantía de Cobertura al 95%)</div>
+                        <div class="market-category-subtitle">Descarta automáticamente cualquier señal donde el precio de mercado esté dentro del margen de error [P_min, P_max]. Solo admite ventajas estadísticas probadas.</div>
+                    </div>
+                    <div>
+                        <button class="btn-action" onclick="fetchConformalSignals()">🔄 Actualizar Conformal Radar</button>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-bottom: 25px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Estrategia</th>
+                                <th>Mercado / Pregunta</th>
+                                <th>Lado</th>
+                                <th>Prob. Predicha</th>
+                                <th>Intervalo Conforme [P_min, P_max]</th>
+                                <th>Precio CLOB</th>
+                                <th>Estado de Admisión</th>
+                                <th>Edge Garantizado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ml-conformal-table">
+                            <tr><td colspan="8" class="empty-state">Calculando intervalos conformes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Escáner de Arbitraje Combinatorio Libre de Riesgo -->
+                <div class="market-category-toolbar" style="margin-bottom: 12px;">
+                    <div>
+                        <div class="market-category-title">💎 Escáner de Arbitraje Combinatorio Libre de Riesgo (Bregman / Kolmogorov)</div>
+                        <div class="market-category-subtitle">Detección continua de violaciones a la ley de probabilidad (Suma de precios != $1.00) en eventos dependientes y canastas multicontrato.</div>
+                    </div>
+                    <div>
+                        <button class="btn-action" onclick="fetchCombinatorialArb()">🔄 Escanear Arbitraje</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Evento Combinatorio</th>
+                                <th>Tipo de Arbitraje</th>
+                                <th>Costo Cesta ($)</th>
+                                <th>Payout Garantizado</th>
+                                <th>Beneficio Neto ($)</th>
+                                <th>ROI (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ml-combinatorial-table">
+                            <tr><td colspan="7" class="empty-state">Escaneando grafos de mercados de Polymarket...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -3109,6 +3282,11 @@
                 fetchAIAgent();
                 fetchNewsCatalysts();
             }
+            if (tabName === 'quant-ml') {
+                fetchQuantML();
+                fetchConformalSignals();
+                fetchCombinatorialArb();
+            }
         }
 
         // Live Trading Management Functions
@@ -3540,6 +3718,178 @@
             }
         }
 
+        // ========== QUANT ML & BANDITS JS ==========
+        async function fetchQuantML() {
+            try {
+                const resp = await fetch('/api/quant-ml/status');
+                const data = await resp.json();
+                renderQuantML(data);
+            } catch (e) {
+                console.error('Error fetching Quant ML status:', e);
+            }
+        }
+
+        function renderQuantML(data) {
+            if (!data) return;
+
+            // Context vector
+            const ctx = data.market_context_vector || {};
+            const vEl = document.getElementById('ml-ctx-vol');
+            if (vEl) vEl.textContent = (ctx.btc_velocity_volatility || 0).toFixed(4);
+
+            const sEl = document.getElementById('ml-ctx-spread');
+            if (sEl) sEl.textContent = (ctx.clob_relative_spread || 0).toFixed(4);
+
+            // Conformal metrics
+            const conf = data.conformal_metrics || {};
+            const qEl = document.getElementById('ml-conformal-q');
+            if (qEl) qEl.textContent = (conf.current_quantile_q || 0.100).toFixed(4);
+
+            const rEl = document.getElementById('ml-conformal-rate');
+            if (rEl) rEl.textContent = `${(conf.admissibility_rate_pct || 85.0).toFixed(1)}%`;
+
+            const cEl = document.getElementById('ml-conformal-counts');
+            if (cEl) {
+                cEl.textContent = `${conf.total_admitted || 0} admitidas / ${conf.total_rejected_noise || 0} ruido descartado`;
+            }
+
+            // LinUCB Strategy Matrix
+            const banditTbody = document.getElementById('ml-bandit-table');
+            const strats = data.bandit_strategies || {};
+            const stratKeys = Object.keys(strats);
+
+            if (banditTbody) {
+                if (stratKeys.length === 0) {
+                    banditTbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay estrategias LinUCB activas.</td></tr>';
+                } else {
+                    banditTbody.innerHTML = stratKeys.map(k => {
+                        const s = strats[k];
+                        const mult = parseFloat(s.capital_multiplier || 1.0).toFixed(2);
+                        const ucb = parseFloat(s.ucb_score || 1.0).toFixed(4);
+                        const statusBadge = mult >= 1.20
+                            ? `<span class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-weight: 800;">🚀 BOOST ${mult}x</span>`
+                            : (mult <= 0.80
+                                ? `<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; font-weight: 800;">🔻 REDUCIDO ${mult}x</span>`
+                                : `<span class="badge" style="background: rgba(59,130,246,0.2); color: #93c5fd;">⚖️ ÓPTIMO ${mult}x</span>`);
+
+                        return `<tr>
+                            <td><strong style="color: #34d399;">${k}</strong></td>
+                            <td style="font-family: monospace; color: #a78bfa;">${ucb}</td>
+                            <td><strong style="font-size: 0.95rem; color: #fbbf24;">${mult}x</strong> <span style="font-size: 0.72rem; color: var(--text-muted);">($${(25 * mult).toFixed(0)} USD)</span></td>
+                            <td style="color: var(--text-muted); font-family: monospace;">${s.trades_count || 0}</td>
+                            <td>${statusBadge}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+
+            // Order Flow Imbalance (OFI) Table
+            const ofiTbody = document.getElementById('ml-ofi-table');
+            const ofiSamples = data.recent_ofi_samples || [];
+
+            if (ofiTbody) {
+                if (ofiSamples.length === 0) {
+                    ofiTbody.innerHTML = '<tr><td colspan="4" class="empty-state">Monitorizando libros CLOB en segundo plano...</td></tr>';
+                } else {
+                    ofiTbody.innerHTML = ofiSamples.map(o => {
+                        const isBuy = o.direction === 'BUY_PRESSURE';
+                        const isSell = o.direction === 'SELL_PRESSURE';
+                        const dirBadge = isBuy
+                            ? `<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80; font-weight: 800;">🟢 COMPRA ACUMULADA</span>`
+                            : (isSell
+                                ? `<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; font-weight: 800;">🔴 VENTA MASIVA</span>`
+                                : `<span class="badge" style="background: rgba(148,163,184,0.15); color: #94a3b8;">⚖️ NEUTRAL</span>`);
+
+                        return `<tr>
+                            <td style="font-family: monospace; font-size: 0.78rem; color: #cbd5e1;">${escapeHtml(o.market_id.substring(0, 22))}</td>
+                            <td>${dirBadge}</td>
+                            <td style="font-family: monospace; font-weight: 700; color: ${o.depth_imbalance_pct >= 0 ? '#4ade80' : '#f87171'};">${o.depth_imbalance_pct >= 0 ? '+' : ''}${o.depth_imbalance_pct}%</td>
+                            <td style="font-family: monospace; color: #fbbf24;">$${o.ofi_value}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
+        async function fetchConformalSignals() {
+            try {
+                const resp = await fetch('/api/quant-ml/conformal-signals');
+                const data = await resp.json();
+                renderConformalSignals(data);
+            } catch (e) {
+                console.error('Error fetching Conformal signals:', e);
+            }
+        }
+
+        function renderConformalSignals(data) {
+            if (!data) return;
+            const tbody = document.getElementById('ml-conformal-table');
+            const signals = data.signals || [];
+
+            if (tbody) {
+                if (signals.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay señales en evaluación conformal actualmente.</td></tr>';
+                } else {
+                    tbody.innerHTML = signals.map(s => {
+                        const isAdmit = s.is_admissible;
+                        const statusBadge = isAdmit
+                            ? `<span class="badge" style="background: rgba(16,185,129,0.2); color: #34d399; font-weight: 800;">✅ ADMITIDA</span>`
+                            : `<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171; font-weight: 700;" title="${escapeHtml(s.rejection_reason)}">🛑 RUIDO</span>`;
+
+                        const edgeStr = isAdmit
+                            ? `<strong style="color: #34d399;">+${s.edge_pct}%</strong>`
+                            : `<span style="color: var(--text-muted); font-size: 0.74rem;">--</span>`;
+
+                        return `<tr>
+                            <td><span class="badge" style="background: rgba(59,130,246,0.15); color: #93c5fd; font-weight: 800;">${escapeHtml(s.strategy || 'GEN')}</span></td>
+                            <td class="market-question" style="max-width: 320px;">${escapeHtml(s.market_question || 'Mercado')}</td>
+                            <td><span class="badge ${s.side === 'BUY' ? 'badge-buy' : 'badge-sell'}">${s.side}</span></td>
+                            <td style="font-family: monospace; font-weight: 700; color: #a78bfa;">${(s.predicted_prob * 100).toFixed(1)}%</td>
+                            <td style="font-family: monospace; color: #38bdf8;">[${s.p_lower}, ${s.p_upper}]</td>
+                            <td class="price-tag">$${parseFloat(s.entry_price).toFixed(2)}</td>
+                            <td>${statusBadge}</td>
+                            <td>${edgeStr}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
+        async function fetchCombinatorialArb() {
+            try {
+                const resp = await fetch('/api/quant-ml/combinatorial-arb');
+                const data = await resp.json();
+                renderCombinatorialArb(data);
+            } catch (e) {
+                console.error('Error fetching Combinatorial Arb:', e);
+            }
+        }
+
+        function renderCombinatorialArb(data) {
+            if (!data) return;
+            const tbody = document.getElementById('ml-combinatorial-table');
+            const opps = data.opportunities || [];
+
+            if (tbody) {
+                if (opps.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Escaneando grafos de mercados de Polymarket en tiempo real...</td></tr>';
+                } else {
+                    tbody.innerHTML = opps.map(o => {
+                        const time = o.detected_at ? new Date(o.detected_at * 1000).toLocaleTimeString('es-ES') : '--:--';
+                        return `<tr>
+                            <td style="color: var(--text-muted); font-size: 0.74rem;">${time}</td>
+                            <td><strong style="color: #cbd5e1;">${escapeHtml(o.event_title)}</strong></td>
+                            <td><span class="badge" style="background: rgba(168,85,247,0.18); color: #c084fc; font-weight: 700;">${escapeHtml(o.arbitrage_type)}</span></td>
+                            <td class="price-tag" style="color: #94a3b8;">$${o.total_cost}</td>
+                            <td class="price-tag" style="color: #4ade80; font-weight: 700;">$${o.guaranteed_payout}</td>
+                            <td style="font-family: monospace; font-weight: 800; color: #4ade80;">+$${o.net_profit_usd} USD</td>
+                            <td><strong style="color: #34d399; font-size: 0.95rem;">+${o.net_roi_pct}% ROI</strong></td>
+                        </tr>`;
+                    }).join('');
+                }
+            }
+        }
+
         // Polling para datos que no vienen por WS
         setInterval(() => {
             if (document.getElementById('tab-signals').classList.contains('active')) {
@@ -3571,6 +3921,11 @@
                 fetchAIAgent();
                 fetchNewsCatalysts();
             }
+            if (document.getElementById('tab-quant-ml').classList.contains('active')) {
+                fetchQuantML();
+                fetchConformalSignals();
+                fetchCombinatorialArb();
+            }
         }, 3000);
 
         // Inicial
@@ -3586,6 +3941,9 @@
             fetchLeadLag();
             fetchAIAgent();
             fetchNewsCatalysts();
+            fetchQuantML();
+            fetchConformalSignals();
+            fetchCombinatorialArb();
         }, 2000);
 
         addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');

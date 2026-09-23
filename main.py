@@ -30,6 +30,7 @@ from live_execution import live_manager
 from lead_lag_engine import lead_lag_engine
 from ai_learning_engine import ai_learning_engine
 from news_oracle_agent import news_oracle_agent
+from quant_ml_engine import quant_ml
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -49,6 +50,7 @@ async def lifespan(app: FastAPI):
     lead_lag_engine.start()
     ai_learning_engine.start()
     news_oracle_agent.start()
+    quant_ml.start()
     tasks = [
         asyncio.create_task(gamma_polling_task()),
         asyncio.create_task(clob_polling_task()),
@@ -67,6 +69,7 @@ async def lifespan(app: FastAPI):
         lead_lag_engine.stop()
         ai_learning_engine.stop()
         news_oracle_agent.stop()
+        quant_ml.stop()
         await pm_client.close()
         for task in background_tasks:
             task.cancel()
@@ -1039,6 +1042,49 @@ async def trigger_ai_optimization():
 async def get_news_catalysts():
     """Obtener noticias de alta velocidad procesadas con inferencia Bayesiana."""
     return news_oracle_agent.get_status()
+
+
+# ========== ENDPOINTS QUANT ML & BANDITS (LinUCB, Conformal, OFI, Arb) ==========
+
+@app.get("/api/quant-ml/status")
+async def get_quant_ml_status():
+    """Estado del Meta-Motor Cuantitativo: LinUCB Bandits, Conformal Prediction, OFI y Arbitraje."""
+    return quant_ml.get_status()
+
+
+@app.get("/api/quant-ml/conformal-signals")
+async def get_conformal_signals():
+    """Obtener señales evaluadas bajo el filtro de Conformal Prediction al 95% de confianza."""
+    signals_list = []
+    for tr in list(paper_tracker.trades.values())[:30]:
+        conf = float(tr.get("confidence", 80.0))
+        entry = float(tr.get("entry_price", 0.50))
+        side = tr.get("side", "BUY")
+        conf_eval = quant_ml.conformal.evaluate_signal(conf, entry, side)
+        signals_list.append({
+            "trade_id": tr.get("trade_id"),
+            "strategy": tr.get("strategy_code"),
+            "market_question": tr.get("market_question"),
+            "entry_price": entry,
+            "side": side,
+            "predicted_prob": conf_eval.predicted_prob,
+            "quantile_q": conf_eval.quantile_q,
+            "p_lower": conf_eval.p_lower,
+            "p_upper": conf_eval.p_upper,
+            "is_admissible": conf_eval.is_admissible,
+            "edge_pct": conf_eval.edge_pct,
+            "rejection_reason": conf_eval.rejection_reason,
+        })
+    return {"total": len(signals_list), "signals": signals_list}
+
+
+@app.get("/api/quant-ml/combinatorial-arb")
+async def get_combinatorial_arb():
+    """Obtener oportunidades de arbitraje combinatorio libres de riesgo detectadas."""
+    return {
+        "total": len(quant_ml.combinatorial.opportunities),
+        "opportunities": [asdict(o) for o in quant_ml.combinatorial.opportunities],
+    }
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

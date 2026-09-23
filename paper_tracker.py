@@ -198,10 +198,37 @@ class PaperTradingEngine:
             max_size_usd=100.0,
         )
         
-        # Multiplicador dinámico de IA basado en Brier Score histórico
+        # Multiplicador dinámico de IA y LinUCB Contextual Bandit
+        conformal_res = None
         try:
             from ai_learning_engine import ai_learning_engine
-            strat_mult = ai_learning_engine.get_strategy_multiplier(signal.get("strategy_code", "GEN"))
+            from quant_ml_engine import quant_ml
+            strat_code = signal.get("strategy_code", "GEN")
+            brier_mult = ai_learning_engine.get_strategy_multiplier(strat_code)
+            
+            # LinUCB Contextual Bandit
+            ctx = quant_ml.bandit.get_current_context()
+            ucb_score, bandit_mult = quant_ml.bandit.get_strategy_score_and_multiplier(strat_code, ctx)
+            
+            # Filtro de Conformal Prediction con garantía al 95%
+            conformal_res = quant_ml.conformal.evaluate_signal(
+                predicted_prob=confidence,
+                market_price=entry_price,
+                side=side,
+            )
+            signal["conformal_interval"] = {
+                "p_lower": conformal_res.p_lower,
+                "p_upper": conformal_res.p_upper,
+                "quantile_q": conformal_res.quantile_q,
+                "is_admissible": conformal_res.is_admissible,
+                "edge_pct": conformal_res.edge_pct,
+                "rejection_reason": conformal_res.rejection_reason,
+            }
+            signal["bandit_multiplier"] = bandit_mult
+            signal["bandit_ucb_score"] = ucb_score
+
+            # Multiplicador combinado regulado (Brier Score * LinUCB)
+            strat_mult = round(min(max(brier_mult * bandit_mult, 0.40), 1.60), 2)
         except Exception:
             strat_mult = 1.0
 
@@ -446,9 +473,20 @@ class PaperTradingEngine:
             self.save_to_disk()
             try:
                 from ai_learning_engine import ai_learning_engine
+                from quant_ml_engine import quant_ml
                 for tr in self.trades.values():
                     if tr.get("status") in ("WON", "LOST") and not tr.get("ai_post_mortem_done"):
                         ai_learning_engine.analyze_trade_post_mortem(tr)
+                        
+                        # Actualización Online de LinUCB Contextual Bandit y Conformal Prediction
+                        strat_code = tr.get("strategy_code", "GEN")
+                        outcome = 1 if tr.get("status") == "WON" else 0
+                        pnl = to_float(tr.get("realized_pnl_usd", 0.0), 0.0)
+                        reward = 1.0 if outcome == 1 else -1.0
+                        ctx = quant_ml.bandit.get_current_context()
+                        quant_ml.bandit.update_online(strat_code, ctx, reward)
+                        quant_ml.conformal.record_ground_truth(to_float(tr.get("confidence", 80.0), 80.0), outcome)
+                        
                         tr["ai_post_mortem_done"] = True
             except Exception:
                 pass

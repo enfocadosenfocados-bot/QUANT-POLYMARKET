@@ -1,6 +1,32 @@
 {
-  "updated_at": 1790121012.0634255,
+  "updated_at": 1790121600.5705428,
   "reflections": [
+    {
+      "id": "REFL-1790121600568",
+      "trade_id": "T-LOST-1",
+      "strategy_id": "S20",
+      "market_title": "Will Oracle resolve at 5pm?",
+      "predicted_prob": 0.96,
+      "outcome": 0,
+      "pnl": -92.0,
+      "brier_error": 0.9216,
+      "root_cause": "Resolución con retardo del oráculo o disputa UMA no anticipada.",
+      "actionable_rule": "Aumentar margen de seguridad a 98% y verificar oráculo UMA antes de entrar.",
+      "created_at": 1790121600.568348
+    },
+    {
+      "id": "REFL-1790121600156",
+      "trade_id": "1790121600.1562762",
+      "strategy_id": "UNKNOWN",
+      "market_title": "Mercado Desconocido",
+      "predicted_prob": 0.95,
+      "outcome": 0,
+      "pnl": 0.0,
+      "brier_error": 0.9025,
+      "root_cause": "Divergencia de mercado estándar",
+      "actionable_rule": "Mantener monitorización habitual.",
+      "created_at": 1790121600.1562862
+    },
     {
       "id": "REFL-1790119779772",
       "trade_id": "T-LOST-1",
