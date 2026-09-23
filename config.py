@@ -14,7 +14,15 @@ HEARTBEAT_INTERVAL = 10      # WebSocket heartbeat
 # Filtros de mercado
 MIN_LIQUIDITY = 5000         # Mínimo liquidez para considerar
 MIN_VOLUME_24H = 2000        # Mínimo volumen 24h
-MAX_MARKETS_WS = 100         # Máximo mercados en WebSocket
+MAX_MARKETS_WS = 100
+
+# ========== Paper Trading: realismo de ejecución y límite de capital ==========
+PAPER_ENFORCE_CAPITAL = True    # Activar límite realista de capital (cuenta de $1,000)
+PAPER_MAX_EXPOSURE_USD = 1000.0 # Capital máximo total en posiciones abiertas
+PAPER_MAX_OPEN_POSITIONS = 12   # Nº máximo de posiciones abiertas simultáneas
+PAPER_SLIPPAGE_BPS = 5          # Slippage de entrada en puntos básicos (0.05%)
+PAPER_FEE_RATE = 0.0            # Comisión por trade (Polymarket típicamente 0)
+         # Máximo mercados en WebSocket
 
 # Parámetros de estrategias
 STRATEGY_PARAMS = {

@@ -8,6 +8,21 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+try:
+    from config import (
+        PAPER_MAX_EXPOSURE_USD,
+        PAPER_MAX_OPEN_POSITIONS,
+        PAPER_SLIPPAGE_BPS,
+        PAPER_FEE_RATE,
+        PAPER_ENFORCE_CAPITAL,
+    )
+except ImportError:
+    PAPER_MAX_EXPOSURE_USD = 1000.0
+    PAPER_MAX_OPEN_POSITIONS = 12
+    PAPER_SLIPPAGE_BPS = 5
+    PAPER_FEE_RATE = 0.0
+    PAPER_ENFORCE_CAPITAL = True
+
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
@@ -274,7 +289,37 @@ class PaperTradingEngine:
         if trade_key in self.trades:
             return self.trades[trade_key]
 
-        shares = round(trade_size_usd / entry_price, 2)
+        # ===== Bloque 1: límite de capital realista + ejecución con slippage/fees =====
+        total_open_exposure = 0.0
+        if PAPER_ENFORCE_CAPITAL:
+            open_trades = [t for t in self.trades.values() if t.get("status") == "OPEN"]
+            total_open_exposure = sum(to_float(t.get("position_size_usd"), 0.0) for t in open_trades)
+            if len(open_trades) >= PAPER_MAX_OPEN_POSITIONS:
+                signal["capital_skipped"] = "max_positions"
+                return None
+            available = PAPER_MAX_EXPOSURE_USD - total_open_exposure
+            if available < 10.0:
+                signal["capital_skipped"] = "no_capital"
+                return None
+            if trade_size_usd > available:
+                trade_size_usd = round(available, 2)
+                signal["position_size_usd"] = trade_size_usd
+
+        # Slippage de entrada (comprar más caro / vender más barato)
+        slippage = PAPER_SLIPPAGE_BPS / 10000.0
+        exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
+        exec_price = max(0.01, min(0.99, exec_price))
+
+        # Comisiones sobre el nocional
+        fee_usd = round(trade_size_usd * PAPER_FEE_RATE, 4)
+        effective_size_usd = trade_size_usd - fee_usd
+
+        shares = round(effective_size_usd / exec_price, 2)
+        signal["execution_price"] = round(exec_price, 4)
+        signal["slippage_bps"] = PAPER_SLIPPAGE_BPS
+        signal["fee_usd"] = fee_usd
+        signal["capital_exposure_usd"] = round(total_open_exposure + trade_size_usd, 2)
+
         new_trade = {
             "trade_id": trade_key,
             "signal_id": signal.get("signal_id", ""),
@@ -287,8 +332,9 @@ class PaperTradingEngine:
             "token": signal.get("token", "Yes"),
             "side": side,
             "order_type": "LIMIT",
-            "entry_price": entry_price,
-            "current_price": entry_price,
+            "entry_price": round(exec_price, 4),
+            "signal_entry_price": entry_price,
+            "current_price": round(exec_price, 4),
             "target_price": target_price,
             "stop_loss": stop_loss,
             "initial_stop_loss": stop_loss,

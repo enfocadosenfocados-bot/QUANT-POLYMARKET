@@ -4,6 +4,7 @@ import json
 import re
 import time
 from contextlib import asynccontextmanager, suppress
+from dataclasses import asdict
 from decimal import Decimal, InvalidOperation
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,6 +32,7 @@ from lead_lag_engine import lead_lag_engine
 from ai_learning_engine import ai_learning_engine
 from news_oracle_agent import news_oracle_agent
 from quant_ml_engine import quant_ml
+from strategy_ranking import build_strategy_ranking
 from black_scholes_digital import bs_digital_engine
 from vpin_microstructure import vpin_manager
 from avellaneda_stoikov import avellaneda_stoikov_engine
@@ -945,6 +947,13 @@ async def get_strategy_performance():
     """Rendimiento y desglose de PnL flotante y realizado por cada estrategia cuantitativa."""
     paper_tracker.update_live_prices(registry)
     return paper_tracker.get_strategy_performance()
+
+
+@app.get("/api/strategy-ranking")
+async def get_strategy_ranking():
+    """Ranking cuantitativo de estrategias con significancia estadística, validación ML y ETA."""
+    paper_tracker.update_live_prices(registry)
+    return build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml)
 
 
 @app.post("/api/track-record/reset")

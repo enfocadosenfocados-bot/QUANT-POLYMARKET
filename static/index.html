@@ -981,6 +981,7 @@
                 <button class="tab" onclick="switchTab('logs')">📋 Logs</button>
                 <button class="tab" onclick="switchTab('top-signals')">⭐ Señales Top (Sniper)</button>
                 <button class="tab" onclick="switchTab('track-record')">📈 Track Record en Vivo</button>
+                <button class="tab" <button class="tab" onclick="switchTab('strategy-ranking')" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(217, 70, 239, 0.25)); border-color: rgba(236, 72, 153, 0.5); color: #f9a8d4; font-weight: 800;">🏅 Ranking de Estrategias</button>
                 <button class="tab" onclick="switchTab('strategy-performance')">🏆 Flotante & PnL Estrategias</button>
             </div>
 
@@ -1776,6 +1777,52 @@
                 <div id="strat-details-container">
                     <!-- Tarjetas detalladas inyectadas por JavaScript -->
                 </div>
+            </div>
+
+            <!-- Tab: Ranking de Estrategias (Quant + ML) -->
+            <div id="tab-strategy-ranking" class="tab-content">
+                <div class="sniper-banner" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95)); border-color: rgba(236, 72, 153, 0.35);">
+                    <div class="sniper-title" style="color: #f9a8d4;"><span>🏅</span> Ranking Cuantitativo de Estrategias con Validación ML y Estadística</div>
+                    <div class="sniper-desc">Clasificación objetiva por <strong>Quant Score</strong> (rentabilidad + consistencia + muestra + validación ML). Incluye <strong>significancia estadística</strong> (Wilson vs breakeven), <strong>edge real</strong>, métricas de riesgo y el <strong>reloj de significancia</strong> (días para un veredicto fiable).</div>
+                    <div class="sniper-rules-grid">
+                        <div class="sniper-rule-card"><div class="sniper-rule-title" style="color:#a7f3d0;">🏆 Quant Score</div><div class="sniper-rule-text">Premia el PnL real pero exige muestra y calibración. Evita que una estrategia con 2 trades afortunados lidere.</div></div>
+                        <div class="sniper-rule-card"><div class="sniper-rule-title" style="color:#93c5fd;">📊 Significancia</div><div class="sniper-rule-text">Intervalo de confianza (Wilson 95%) del win rate frente al breakeven implícito del precio de entrada.</div></div>
+                        <div class="sniper-rule-card"><div class="sniper-rule-title" style="color:#fde047;">⏱️ Reloj ETA</div><div class="sniper-rule-text">Velocidad de cierre (trades/día) × muestra necesaria = días para confirmar la ventaja real.</div></div>
+                        <div class="sniper-rule-card"><div class="sniper-rule-title" style="color:#f472b6;">🧠 Efecto del ML</div><div class="sniper-rule-text">Cuánto amplía o reduce el ML el tamaño de las posiciones según Brier Score y bandit LinUCB.</div></div>
+                    </div>
+                </div>
+                <div class="grid grid-4" style="margin-bottom: 25px;">
+                    <div class="card"><div class="card-header"><span class="card-title">Estrategias Operando</span></div><div class="card-value blue" id="rank-kpi-operating">--</div><div class="card-delta text-muted">sobre el total monitorizado</div></div>
+                    <div class="card"><div class="card-header"><span class="card-title">Trades Cerrados</span></div><div class="card-value" id="rank-kpi-closed">--</div><div class="card-delta text-muted">base del análisis estadístico</div></div>
+                    <div class="card"><div class="card-header"><span class="card-title">Distribución Tiers</span></div><div class="card-value" id="rank-kpi-tiers" style="font-size:1.2rem;">--</div><div class="card-delta text-muted">A / B / C automáticos</div></div>
+                    <div class="card"><div class="card-header"><span class="card-title">Líder por Score</span></div><div class="card-value green" id="rank-kpi-best" style="font-size:1.2rem;">--</div><div class="card-delta text-muted" id="rank-kpi-best-sub">--</div></div>
+                </div>
+                <div class="market-category-toolbar">
+                    <div><div class="market-category-title">📊 Tabla de Ranking</div><div class="market-category-subtitle">Filtra y ordena para ver las mejores de las mejores.</div></div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(30,41,59,0.7);padding:6px 12px;border-radius:20px;font-size:0.85rem;border:1px solid rgba(148,163,184,0.3);"><input type="checkbox" id="rank-only-operating" onchange="setRankFilter()"> Solo operaron</label>
+                        <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(30,41,59,0.7);padding:6px 12px;border-radius:20px;font-size:0.85rem;border:1px solid rgba(148,163,184,0.3);"><input type="checkbox" id="rank-only-ml" onchange="setRankFilter()"> Solo con ML</label>
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">Mín. cerrados <input type="number" id="rank-min-closed" value="0" min="0" style="width:56px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:4px 6px;" onchange="setRankFilter()"></label>
+                        <select id="rank-sort" onchange="setRankFilter()" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-radius:8px;padding:6px 10px;font-size:0.85rem;">
+                            <option value="score">Ordenar: Score</option>
+                            <option value="total_pnl_usd">Ordenar: PnL</option>
+                            <option value="win_rate_pct">Ordenar: Win Rate</option>
+                            <option value="closed_trades_count">Ordenar: Trades cerrados</option>
+                            <option value="edge_pct">Ordenar: Edge</option>
+                            <option value="sharpe">Ordenar: Sharpe</option>
+                            <option value="eta_days">Ordenar: ETA (menor)</option>
+                        </select>
+                        <button class="btn-action" onclick="fetchStrategyRanking()">🔄 Actualizar</button>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-bottom:30px;">
+                    <table>
+                        <thead><tr><th>Rank</th><th>Estrategia</th><th>Tier</th><th>Trades (tot/cerr)</th><th>Win Rate</th><th>Edge</th><th>PnL Total ($)</th><th>Sharpe</th><th>ML</th><th>ETA</th><th>Score</th><th></th></tr></thead>
+                        <tbody id="rank-table"><tr><td colspan="12" class="empty-state">Calculando ranking cuantitativo...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="market-category-toolbar"><div><div class="market-category-title">🔗 Correlación entre estrategias</div><div class="market-category-subtitle">Pares con mayor correlación de PnL diario (evita concentrar capital en estrategias redundantes).</div></div></div>
+                <div class="table-container"><table><thead><tr><th>Estrategia A</th><th>Estrategia B</th><th>Correlación</th></tr></thead><tbody id="rank-corr-table"><tr><td colspan="3" class="empty-state">Sin datos suficientes de correlación.</td></tr></tbody></table></div>
             </div>
 
             <!-- Tab: Lead-Lag Cripto (Binance vs CLOB) -->
@@ -3482,6 +3529,7 @@
             if (tabName === 'top-signals') fetchTopSignals();
             if (tabName === 'track-record') fetchTrackRecord();
             if (tabName === 'strategy-performance') fetchStrategyPerformance();
+            if (tabName === 'strategy-ranking') fetchStrategyRanking();
             if (tabName === 'lead-lag') fetchLeadLag();
             if (tabName === 'ai-agent') {
                 fetchAIAgent();
@@ -4102,6 +4150,138 @@
             }
         }
 
+        // ========== RANKING DE ESTRATEGIAS (Quant + ML) ==========
+        const rankingFilters = { onlyOperating: false, onlyML: false, minClosed: 0, sort: 'score' };
+
+        function setRankFilter() {
+            const op = document.getElementById('rank-only-operating');
+            const ml = document.getElementById('rank-only-ml');
+            const mc = document.getElementById('rank-min-closed');
+            const s = document.getElementById('rank-sort');
+            rankingFilters.onlyOperating = op ? op.checked : false;
+            rankingFilters.onlyML = ml ? ml.checked : false;
+            rankingFilters.minClosed = mc ? (parseInt(mc.value, 10) || 0) : 0;
+            rankingFilters.sort = s ? s.value : 'score';
+            fetchStrategyRanking();
+        }
+
+        async function fetchStrategyRanking() {
+            try {
+                const resp = await fetch('/api/strategy-ranking');
+                const data = await resp.json();
+                renderStrategyRanking(data);
+            } catch (e) { console.error('Error fetching ranking:', e); }
+        }
+
+        function rankBadge(text, bg, color) {
+            return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:700;background:' + bg + ';color:' + color + ';">' + text + '</span>';
+        }
+        function tierBadge(t) {
+            if (t === 'A') return rankBadge('A', 'rgba(16,185,129,0.2)', '#34d399');
+            if (t === 'B') return rankBadge('B', 'rgba(245,158,11,0.2)', '#fbbf24');
+            return rankBadge('C', 'rgba(239,68,68,0.2)', '#f87171');
+        }
+        function mlBadge(r) {
+            if (!r.ml_active) return rankBadge('NO ML', 'rgba(100,116,139,0.2)', '#94a3b8');
+            const b = r.ml_badge || 'SIN DATOS';
+            if (b === 'BOOSTED') return rankBadge('ML BOOST', 'rgba(16,185,129,0.2)', '#34d399');
+            if (b === 'REDUCED') return rankBadge('ML REDUCE', 'rgba(239,68,68,0.2)', '#f87171');
+            if (b === 'OPTIMAL') return rankBadge('ML OK', 'rgba(59,130,246,0.2)', '#60a5fa');
+            return rankBadge('ML ' + b, 'rgba(100,116,139,0.2)', '#94a3b8');
+        }
+        function rnum(v, d) { return (v == null ? 0 : v).toFixed(d == null ? 2 : d); }
+        function rpnl(v) {
+            const n = v || 0; const s = n >= 0 ? '+' : ''; const c = n >= 0 ? '#34d399' : '#f87171';
+            return '<span style="color:' + c + ';font-weight:600;">' + s + '$' + n.toFixed(2) + '</span>';
+        }
+
+        function rankDetailHTML(r) {
+            const fl = (r.flags || []).map(function(f){ return rankBadge(f, 'rgba(245,158,11,0.18)', '#fbbf24'); }).join(' ');
+            const lessons = (r.lessons || []).map(function(l){
+                return '<div style="margin:6px 0;padding:8px;border-left:3px solid #a855f7;background:rgba(168,85,247,0.08);border-radius:4px;"><strong>' + l.outcome + '</strong> — ' + l.root_cause + '<br><em style="color:#c084fc;">Regla: ' + l.actionable_rule + '</em></div>';
+            }).join('');
+            const hb = Object.keys(r.horizon_breakdown || {}).map(function(k){ return k + ': $' + r.horizon_breakdown[k]; }).join(' · ');
+            const cb = Object.keys(r.category_breakdown || {}).map(function(k){ return k + ': $' + r.category_breakdown[k]; }).join(' · ');
+            const eta = r.eta_days != null ? r.eta_days + ' días' : '—';
+            return '<div style="padding:14px;background:rgba(15,23,42,0.6);border-radius:8px;">' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">' +
+                '<div><small class="text-muted">Efecto del ML</small><br>' + (r.ml_effect ? r.ml_effect.label : '—') + '</div>' +
+                '<div><small class="text-muted">Breakeven / Edge</small><br>' + rnum(r.breakeven_pct,1) + '% / ' + (r.edge_pct >= 0 ? '+' : '') + rnum(r.edge_pct,1) + '%</div>' +
+                '<div><small class="text-muted">Wilson 95%</small><br>[' + rnum(r.wilson_lower_pct,1) + '% – ' + rnum(r.wilson_upper_pct,1) + '%]</div>' +
+                '<div><small class="text-muted">Significancia</small><br>' + (r.significance || '—') + '</div>' +
+                '<div><small class="text-muted">Muestra necesaria</small><br>' + (r.sample_required || 0) + ' trades</div>' +
+                '<div><small class="text-muted">Velocidad cierre</small><br>' + rnum(r.closing_velocity_per_day,2) + '/día</div>' +
+                '<div><small class="text-muted">ETA significancia</small><br>' + eta + '</div>' +
+                '<div><small class="text-muted">Kelly óptimo</small><br>' + rnum(r.kelly_optimal,4) + '</div>' +
+                '<div><small class="text-muted">Sharpe / Sortino</small><br>' + rnum(r.sharpe,2) + ' / ' + rnum(r.sortino,2) + '</div>' +
+                '<div><small class="text-muted">Max DD</small><br>' + rnum(r.max_drawdown_pct,2) + '%</div>' +
+                '<div><small class="text-muted">Expectativa/trade</small><br>$' + rnum(r.expectancy_per_trade_usd,2) + '</div>' +
+                '<div><small class="text-muted">Tenencia media</small><br>' + rnum(r.avg_holding_hours,1) + ' h</div>' +
+                '<div><small class="text-muted">PnL 24h / 7d / 30d</small><br>' + rpnl(r.pnl_24h) + ' / ' + rpnl(r.pnl_7d) + ' / ' + rpnl(r.pnl_30d) + '</div>' +
+                '<div><small class="text-muted">Brier / Kelly IA</small><br>' + (r.ai_brier_score != null ? rnum(r.ai_brier_score,4) : '—') + ' / ' + (r.ai_kelly_multiplier != null ? '×' + rnum(r.ai_kelly_multiplier,2) : '—') + '</div>' +
+                '<div><small class="text-muted">Bandit LinUCB</small><br>' + (r.bandit_capital_multiplier != null ? '×' + rnum(r.bandit_capital_multiplier,2) : '—') + ' (' + (r.bandit_trades || 0) + ' upd)</div>' +
+                '<div><small class="text-muted">Acción recomendada</small><br>' + (r.tier_action || '—') + '</div>' +
+                '</div>' +
+                '<div style="margin-top:10px;"><strong>Flags:</strong> ' + (fl || '—') + '</div>' +
+                '<div style="margin-top:10px;"><strong>Por horizonte:</strong> ' + (hb || '—') + '</div>' +
+                '<div style="margin-top:6px;"><strong>Por categoría:</strong> ' + (cb || '—') + '</div>' +
+                (lessons ? '<div style="margin-top:10px;"><strong>Lecciones aprendidas (ML):</strong>' + lessons + '</div>' : '') +
+                '</div>';
+        }
+
+        function rankRowHTML(r) {
+            const eta = r.eta_days != null ? r.eta_days + 'd' : '—';
+            return '<tr>' +
+                '<td>' + (r.rank_badge || '') + '</td>' +
+                '<td style="text-align:left;">' + (r.icon || '') + ' <strong>' + (r.name || r.code) + '</strong><br><small class="text-muted">' + (r.category_meta || '') + '</small></td>' +
+                '<td>' + tierBadge(r.tier) + '</td>' +
+                '<td>' + r.total_trades + ' / ' + r.closed_trades_count + '</td>' +
+                '<td>' + rnum(r.win_rate_pct,1) + '%</td>' +
+                '<td>' + (r.edge_pct >= 0 ? '+' : '') + rnum(r.edge_pct,1) + '%</td>' +
+                '<td>' + rpnl(r.total_pnl_usd) + '</td>' +
+                '<td>' + rnum(r.sharpe,2) + '</td>' +
+                '<td>' + mlBadge(r) + (r.ai_kelly_multiplier != null ? ' ×' + rnum(r.ai_kelly_multiplier,2) : '') + '</td>' +
+                '<td>' + eta + '</td>' +
+                '<td><strong>' + rnum(r.score,2) + '</strong></td>' +
+                '<td><button class="btn-action" data-code="' + r.code + '" onclick="toggleRankDetail(this)">🔍</button></td>' +
+                '</tr>' +
+                '<tr id="rank-detail-' + r.code + '" style="display:none;"><td colspan="12" style="text-align:left;">' + rankDetailHTML(r) + '</td></tr>';
+        }
+
+        function toggleRankDetail(btn) {
+            const code = btn.getAttribute('data-code');
+            const el = document.getElementById('rank-detail-' + code);
+            if (el) el.style.display = (el.style.display === 'none' ? 'table-row' : 'none');
+        }
+
+        function renderStrategyRanking(data) {
+            if (!data) return;
+            const opEl = document.getElementById('rank-kpi-operating'); if (opEl) opEl.textContent = data.operating_count + ' / ' + data.total_strategies;
+            const clEl = document.getElementById('rank-kpi-closed'); if (clEl) clEl.textContent = data.total_closed_trades;
+            const trEl = document.getElementById('rank-kpi-tiers'); if (trEl) trEl.textContent = ((data.tiers && data.tiers.A) || 0) + ' A · ' + ((data.tiers && data.tiers.B) || 0) + ' B · ' + ((data.tiers && data.tiers.C) || 0) + ' C';
+            const bEl = document.getElementById('rank-kpi-best'); if (bEl && data.best_by_score) bEl.textContent = (data.best_by_score.icon || '') + ' ' + data.best_by_score.name;
+            const bSub = document.getElementById('rank-kpi-best-sub'); if (bSub && data.best_by_score) bSub.textContent = 'Score ' + rnum(data.best_by_score.score, 2);
+
+            let rows = (data.strategies || []).slice();
+            if (rankingFilters.onlyOperating) rows = rows.filter(function(r){ return r.total_trades > 0; });
+            if (rankingFilters.onlyML) rows = rows.filter(function(r){ return r.ml_active; });
+            if (rankingFilters.minClosed > 0) rows = rows.filter(function(r){ return r.closed_trades_count >= rankingFilters.minClosed; });
+            const k = rankingFilters.sort || 'score';
+            rows.sort(function(a, b){
+                if (k === 'eta_days') { const av = a.eta_days == null ? Infinity : a.eta_days; const bv = b.eta_days == null ? Infinity : b.eta_days; return av - bv; }
+                return (b[k] || 0) - (a[k] || 0);
+            });
+
+            const tbody = document.getElementById('rank-table');
+            if (tbody) tbody.innerHTML = rows.length ? rows.map(rankRowHTML).join('') : '<tr><td colspan="12" class="empty-state">Sin estrategias que coincidan con los filtros.</td></tr>';
+
+            const corrTbody = document.getElementById('rank-corr-table');
+            if (corrTbody) {
+                const corr = data.correlations || [];
+                corrTbody.innerHTML = corr.length ? corr.map(function(c){ return '<tr><td>' + c.a + '</td><td>' + c.b + '</td><td>' + c.correlation + '</td></tr>'; }).join('') : '<tr><td colspan="3" class="empty-state">Sin correlaciones significativas aún.</td></tr>';
+            }
+        }
+
         // Polling para datos que no vienen por WS
         setInterval(() => {
             if (document.getElementById('tab-signals').classList.contains('active')) {
@@ -4125,6 +4305,9 @@
             }
             if (document.getElementById('tab-strategy-performance').classList.contains('active')) {
                 fetchStrategyPerformance();
+            }
+            if (document.getElementById('tab-strategy-ranking').classList.contains('active')) {
+                fetchStrategyRanking();
             }
             if (document.getElementById('tab-lead-lag').classList.contains('active')) {
                 fetchLeadLag();
