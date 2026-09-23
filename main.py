@@ -33,6 +33,9 @@ from news_oracle_agent import news_oracle_agent
 from quant_ml_engine import quant_ml
 from black_scholes_digital import bs_digital_engine
 from vpin_microstructure import vpin_manager
+from avellaneda_stoikov import avellaneda_stoikov_engine
+from multi_exchange_feed import multi_exchange_feed
+from polygon_health_checker import polygon_health_checker
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -53,6 +56,7 @@ async def lifespan(app: FastAPI):
     ai_learning_engine.start()
     news_oracle_agent.start()
     quant_ml.start()
+    multi_exchange_feed.start()
     tasks = [
         asyncio.create_task(gamma_polling_task()),
         asyncio.create_task(clob_polling_task()),
@@ -72,6 +76,7 @@ async def lifespan(app: FastAPI):
         ai_learning_engine.stop()
         news_oracle_agent.stop()
         quant_ml.stop()
+        multi_exchange_feed.stop()
         await pm_client.close()
         for task in background_tasks:
             task.cancel()
@@ -1107,6 +1112,52 @@ async def get_black_scholes_signals():
 async def get_vpin_status():
     """Índice VPIN de toxicidad institucional O(1) y Kyle's Lambda (López de Prado)."""
     return vpin_manager.get_status()
+
+
+# ========== ENDPOINTS MARKET MAKING, MULTI-EXCHANGE Y AUDITORÍA POLYGON ==========
+
+@app.get("/api/market-making/status")
+async def get_market_making_status():
+    """Estado y cotizaciones del motor Avellaneda-Stoikov Market Maker."""
+    try:
+        from lead_lag_engine import lead_lag_engine
+        markets = getattr(lead_lag_engine, "tracked_polymarket_contracts", [])
+        vpin_info = vpin_manager.get_status()
+        vpin_val = vpin_info.get("global_vpin", 0.20)
+        for m in markets:
+            sym = m.get("crypto_symbol", "BTC")
+            clob_ask = m.get("clob_ask", 0.50)
+            vel = lead_lag_engine.get_velocity(sym, 10.0)
+            avellaneda_stoikov_engine.quote_market(
+                market_id=m.get("market_id", f"poly_{sym.lower()}_flash"),
+                symbol=sym,
+                mid_price=clob_ask,
+                vpin_toxicity=vpin_val,
+                crypto_velocity_10s=vel,
+            )
+    except Exception as e:
+        pass
+    return avellaneda_stoikov_engine.get_status()
+
+
+@app.post("/api/market-making/toggle")
+async def toggle_market_making():
+    """Habilita o pausa el creador de mercado pasivo Avellaneda-Stoikov."""
+    avellaneda_stoikov_engine.is_enabled = not avellaneda_stoikov_engine.is_enabled
+    return {"is_enabled": avellaneda_stoikov_engine.is_enabled}
+
+
+@app.get("/api/multi-exchange/status")
+async def get_multi_exchange_status():
+    """Feed paralelo de Binance, Coinbase y Bybit con detector First Mover."""
+    return multi_exchange_feed.get_status()
+
+
+@app.get("/api/wallet/health-check")
+async def get_wallet_health_check(force: bool = False):
+    """Diagnóstico on-chain de Polygon (saldos POL, USDC, allowances y latencia RPC)."""
+    report = await polygon_health_checker.check_health(force_refresh=force)
+    return polygon_health_checker.get_status()
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

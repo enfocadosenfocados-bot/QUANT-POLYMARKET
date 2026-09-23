@@ -974,6 +974,7 @@
                 <button class="tab" onclick="switchTab('lead-lag')" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(245, 158, 11, 0.25)); border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; font-weight: 700;">⚡ Lead-Lag Cripto</button>
                 <button class="tab" onclick="switchTab('ai-agent')" style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.25)); border-color: rgba(168, 85, 247, 0.5); color: #d8b4fe; font-weight: 700;">🤖 Agente IA & Auto-Aprendizaje</button>
                 <button class="tab" onclick="switchTab('quant-ml')" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25)); border-color: rgba(16, 185, 129, 0.5); color: #34d399; font-weight: 800;">🧠 Quant ML & Bandits</button>
+                <button class="tab" onclick="switchTab('market-making')" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.3)); border-color: rgba(59, 130, 246, 0.6); color: #60a5fa; font-weight: 800;">🏦 MM Avellaneda & Multi-Feed</button>
                 <button class="tab" onclick="switchTab('arbitrage')">⚡ Arbitraje Bundle</button>
                 <button class="tab" onclick="switchTab('markets')">📊 Todos los Mercados</button>
                 <button class="tab" onclick="switchTab('strategies')">🧠 Estrategias</button>
@@ -2267,6 +2268,148 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Tab: Market Making Avellaneda-Stoikov, Multi-Exchange & Polygon Health -->
+            <div id="tab-market-making" class="tab-content">
+                <!-- Tarjeta de Diagnóstico y Salud de Billetera Polygon (Chain ID 137) -->
+                <div class="card" style="margin-bottom: 25px; border-left: 4px solid #3b82f6;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+                        <div>
+                            <div class="market-category-title" style="font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <span>🩺</span> Diagnóstico On-Chain de Billetera Polygon (Chain ID 137)
+                                <span id="wallet-health-badge" class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">AUDITANDO...</span>
+                            </div>
+                            <div class="market-category-subtitle">Auditoría automática de gas nativo POL/MATIC, saldos de USDC y aprobación de contratos de Polymarket.</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-action" onclick="fetchWalletHealth(true)" style="background: #2563eb;">🔄 Re-auditar Billetera</button>
+                        </div>
+                    </div>
+                    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 16px;">
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Billetera Auditada</div>
+                            <div id="wallet-addr-display" style="font-family: monospace; font-size: 0.85rem; color: #60a5fa; margin-top: 4px; overflow: hidden; text-overflow: ellipsis;">0x...</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Gas POL / MATIC</div>
+                            <div id="wallet-pol-balance" class="card-value" style="font-size: 1.3rem; color: #a855f7; margin-top: 4px;">0.00 POL</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Saldo Total USDC</div>
+                            <div id="wallet-usdc-balance" class="card-value" style="font-size: 1.3rem; color: #22c55e; margin-top: 4px;">$0.00 USD</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Permiso CTF Exchange</div>
+                            <div id="wallet-ctf-allowance" style="font-size: 1.1rem; font-weight: 700; color: #eab308; margin-top: 6px;">Pendiente</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Nodo RPC Óptimo</div>
+                            <div id="wallet-rpc-info" style="font-size: 0.85rem; color: #38bdf8; margin-top: 4px;">-- ms</div>
+                        </div>
+                    </div>
+                    <div id="wallet-recommendations-list" style="font-size: 0.85rem; color: #94a3b8; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px;">
+                        Auditoría en curso...
+                    </div>
+                </div>
+
+                <!-- Feed Multi-Exchange Paralelo (Binance vs Coinbase vs Bybit) -->
+                <div class="card" style="margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+                        <div>
+                            <div class="market-category-title" style="font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <span>🌐</span> Feed Multi-Exchange en Paralelo con Detector "First Mover"
+                            </div>
+                            <div class="market-category-subtitle">Monitoreo cruzado en microsegundos de Binance, Coinbase y Bybit. Identifica qué exchange rompe primero para ganar 300-600ms de ventaja sobre Polymarket.</div>
+                        </div>
+                        <div>
+                            <button class="btn-action" onclick="fetchMultiExchange()">🔄 Actualizar Feeds</button>
+                        </div>
+                    </div>
+                    <div class="table-container" style="margin-bottom: 16px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Criptoactivo</th>
+                                    <th>Binance Spot</th>
+                                    <th>Coinbase Advanced</th>
+                                    <th>Bybit Spot</th>
+                                    <th>Mediana Consenso</th>
+                                    <th>Dispersión (%)</th>
+                                    <th>Líder First Mover</th>
+                                    <th>Velocidad 5s Líder</th>
+                                    <th>Estado Momentum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="multi-exchange-table">
+                                <tr><td colspan="9" class="empty-state">Conectando WebSockets de Binance, Coinbase y Bybit...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Motor de Market Making Pasivo Avellaneda-Stoikov -->
+                <div class="card" style="margin-bottom: 25px; border-left: 4px solid #10b981;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+                        <div>
+                            <div class="market-category-title" style="font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <span>🏦</span> Motor Cuantitativo Avellaneda & Stoikov (Captura Pasiva de Spread)
+                                <span id="mm-status-badge" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">ACTIVO</span>
+                            </div>
+                            <div class="market-category-subtitle">Cotiza órdenes límite en Bid y Ask optimizadas matemáticamente según el inventario q y la volatilidad sigma. Recolecta el spread libre de riesgo direccional.</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-toggle-mm" class="btn-action" onclick="toggleMarketMaking()" style="background: #059669; font-weight: 700;">⏸️ Pausar Market Maker</button>
+                            <button class="btn-action" onclick="fetchMarketMaking()">🔄 Actualizar Cotizaciones</button>
+                        </div>
+                    </div>
+
+                    <!-- Métricas Cuantitativas MM -->
+                    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">PnL Spread Capturado</div>
+                            <div id="mm-pnl-usd" class="card-value" style="font-size: 1.3rem; color: #10b981; margin-top: 4px;">+$0.00 USD</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Volumen Cotizado</div>
+                            <div id="mm-volume-usd" class="card-value" style="font-size: 1.3rem; color: #38bdf8; margin-top: 4px;">$0.00 USD</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Exposición Inventario Total</div>
+                            <div id="mm-inventory-exposure" class="card-value" style="font-size: 1.3rem; color: #f59e0b; margin-top: 4px;">0 contratos</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Aversión Riesgo γ / Liquidez κ</div>
+                            <div id="mm-params-display" style="font-size: 0.95rem; font-weight: 700; color: #cbd5e1; margin-top: 6px;">γ=0.25 | κ=1.80</div>
+                        </div>
+                        <div class="card" style="background: rgba(15, 23, 42, 0.6); padding: 14px;">
+                            <div class="text-muted" style="font-size: 0.8rem;">Protección Anti-Toxic VPIN</div>
+                            <div id="mm-anti-toxic-badge" style="font-size: 0.95rem; font-weight: 700; color: #22c55e; margin-top: 6px;">🛡️ BLINDADO</div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Cotizaciones Activas -->
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mercado</th>
+                                    <th>Activo</th>
+                                    <th>Precio Medio (s)</th>
+                                    <th>Precio Reserva (r)</th>
+                                    <th>Bid Óptimo</th>
+                                    <th>Ask Óptimo</th>
+                                    <th>Half-Spread (δ*)</th>
+                                    <th>Inventario Actual (q)</th>
+                                    <th>Estado de Cotización</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mm-quotes-table">
+                                <tr><td colspan="9" class="empty-state">Calculando curvas de reserva de Avellaneda-Stoikov...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -3351,6 +3494,11 @@
                 fetchBlackScholesSignals();
                 fetchVPINStatus();
             }
+            if (tabName === 'market-making') {
+                fetchMarketMaking();
+                fetchMultiExchange();
+                fetchWalletHealth();
+            }
         }
 
         // Live Trading Management Functions
@@ -3992,6 +4140,11 @@
                 fetchBlackScholesSignals();
                 fetchVPINStatus();
             }
+            if (document.getElementById('tab-market-making') && document.getElementById('tab-market-making').classList.contains('active')) {
+                fetchMarketMaking();
+                fetchMultiExchange();
+                fetchWalletHealth();
+            }
         }, 3000);
 
         // ========== BLACK-SCHOLES DIGITAL OPTIONS JS ==========
@@ -4092,6 +4245,205 @@
             }
         }
 
+        // ========== MARKET MAKING & MULTI-EXCHANGE & WALLET HEALTH JS ==========
+        async function fetchWalletHealth(force = false) {
+            try {
+                const resp = await fetch(`/api/wallet/health-check${force ? '?force=true' : ''}`);
+                const data = await resp.json();
+                renderWalletHealth(data);
+            } catch (e) {
+                console.error('Error fetching wallet health:', e);
+            }
+        }
+
+        function renderWalletHealth(data) {
+            if (!data) return;
+            const badge = document.getElementById('wallet-health-badge');
+            const addr = document.getElementById('wallet-addr-display');
+            const pol = document.getElementById('wallet-pol-balance');
+            const usdc = document.getElementById('wallet-usdc-balance');
+            const ctf = document.getElementById('wallet-ctf-allowance');
+            const rpc = document.getElementById('wallet-rpc-info');
+            const recList = document.getElementById('wallet-recommendations-list');
+
+            if (addr) addr.textContent = data.wallet_address || '0x (No configurada)';
+            if (pol) pol.textContent = `${(data.pol_gas_balance || 0).toFixed(3)} POL`;
+            if (usdc) usdc.textContent = `$${(data.total_usdc_balance || 0).toFixed(2)} USD`;
+            if (rpc) rpc.textContent = `${data.best_rpc_url || 'RPC'} (${data.best_rpc_latency_ms || 0} ms)`;
+
+            if (ctf) {
+                if (data.ctf_allowance_active) {
+                    ctf.innerHTML = '<span style="color: #22c55e;">✅ Aprobado</span>';
+                } else {
+                    ctf.innerHTML = '<span style="color: #eab308;">⚠️ Sin Aprobar</span>';
+                }
+            }
+
+            if (badge) {
+                badge.textContent = data.status || 'STATUS';
+                if (data.status_color === 'GREEN') {
+                    badge.style.background = 'rgba(34, 197, 94, 0.2)';
+                    badge.style.color = '#4ade80';
+                } else if (data.status_color === 'YELLOW') {
+                    badge.style.background = 'rgba(234, 179, 8, 0.2)';
+                    badge.style.color = '#fde047';
+                } else {
+                    badge.style.background = 'rgba(100, 116, 139, 0.2)';
+                    badge.style.color = '#94a3b8';
+                }
+            }
+
+            if (recList) {
+                const recs = data.recommendations || [];
+                recList.innerHTML = recs.length ? recs.map(r => `<div style="margin-bottom: 4px;">• ${r}</div>`).join('') : '<div>• Billetera en estado normal.</div>';
+            }
+        }
+
+        async function fetchMultiExchange() {
+            try {
+                const resp = await fetch('/api/multi-exchange/status');
+                const data = await resp.json();
+                renderMultiExchange(data);
+            } catch (e) {
+                console.error('Error fetching multi-exchange status:', e);
+            }
+        }
+
+        function renderMultiExchange(data) {
+            if (!data) return;
+            const tbody = document.getElementById('multi-exchange-table');
+            if (!tbody) return;
+
+            const prices = data.prices_by_exchange || {};
+            const signals = data.first_mover_signals || {};
+            const symbols = ['BTC', 'ETH', 'SOL'];
+
+            tbody.innerHTML = symbols.map(sym => {
+                const pEx = prices[sym] || {};
+                const sig = signals[sym] || {};
+
+                const bPrice = pEx.BINANCE?.price ? `$${pEx.BINANCE.price.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '--';
+                const bVel = pEx.BINANCE?.velocity_5s ? (pEx.BINANCE.velocity_5s >= 0 ? `+${pEx.BINANCE.velocity_5s.toFixed(2)}%` : `${pEx.BINANCE.velocity_5s.toFixed(2)}%`) : '0.00%';
+
+                const cPrice = pEx.COINBASE?.price ? `$${pEx.COINBASE.price.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '--';
+                const cVel = pEx.COINBASE?.velocity_5s ? (pEx.COINBASE.velocity_5s >= 0 ? `+${pEx.COINBASE.velocity_5s.toFixed(2)}%` : `${pEx.COINBASE.velocity_5s.toFixed(2)}%`) : '0.00%';
+
+                const byPrice = pEx.BYBIT?.price ? `$${pEx.BYBIT.price.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '--';
+                const byVel = pEx.BYBIT?.velocity_5s ? (pEx.BYBIT.velocity_5s >= 0 ? `+${pEx.BYBIT.velocity_5s.toFixed(2)}%` : `${pEx.BYBIT.velocity_5s.toFixed(2)}%`) : '0.00%';
+
+                const median = sig.consensus_median_price ? `$${sig.consensus_median_price.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '--';
+                const spread = sig.max_price_spread_pct !== undefined ? `${sig.max_price_spread_pct.toFixed(3)}%` : '0.00%';
+
+                const leader = sig.leader_exchange || 'BINANCE';
+                const leadVel = sig.lead_velocity_5s ? (sig.lead_velocity_5s >= 0 ? `+${sig.lead_velocity_5s.toFixed(2)}%` : `${sig.lead_velocity_5s.toFixed(2)}%`) : '0.00%';
+
+                let statusBadge = '<span class="badge" style="background: rgba(100,116,139,0.2); color: #94a3b8;">⚖️ ESTABLE</span>';
+                if (sig.status === 'LEAD_BREAKOUT_UP') {
+                    statusBadge = '<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">🚀 RUPTURA ALCISTA</span>';
+                } else if (sig.status === 'LEAD_BREAKOUT_DOWN') {
+                    statusBadge = '<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">🔻 RUPTURA BAJISTA</span>';
+                }
+
+                return `<tr>
+                    <td><strong>${sym}/USD</strong></td>
+                    <td>${bPrice} <small style="color: ${bVel.startsWith('+') ? '#34d399' : '#f87171'}">${bVel}</small></td>
+                    <td>${cPrice} <small style="color: ${cVel.startsWith('+') ? '#34d399' : '#f87171'}">${cVel}</small></td>
+                    <td>${byPrice} <small style="color: ${byVel.startsWith('+') ? '#34d399' : '#f87171'}">${byVel}</small></td>
+                    <td><strong>${median}</strong></td>
+                    <td><span style="font-family: monospace;">${spread}</span></td>
+                    <td><span class="badge" style="background: rgba(59,130,246,0.2); color: #60a5fa; font-weight: 700;">⭐ ${leader}</span></td>
+                    <td><strong style="color: #38bdf8;">${leadVel}</strong></td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function fetchMarketMaking() {
+            try {
+                const resp = await fetch('/api/market-making/status');
+                const data = await resp.json();
+                renderMarketMaking(data);
+            } catch (e) {
+                console.error('Error fetching market making status:', e);
+            }
+        }
+
+        function renderMarketMaking(data) {
+            if (!data) return;
+            const badge = document.getElementById('mm-status-badge');
+            const btn = document.getElementById('btn-toggle-mm');
+            const pnl = document.getElementById('mm-pnl-usd');
+            const vol = document.getElementById('mm-volume-usd');
+            const inv = document.getElementById('mm-inventory-exposure');
+            const params = document.getElementById('mm-params-display');
+            const tbody = document.getElementById('mm-quotes-table');
+
+            if (badge) {
+                if (data.is_enabled) {
+                    badge.textContent = 'ACTIVO (COTIZANDO)';
+                    badge.style.background = 'rgba(16, 185, 129, 0.2)';
+                    badge.style.color = '#34d399';
+                } else {
+                    badge.textContent = 'PAUSADO';
+                    badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                    badge.style.color = '#f87171';
+                }
+            }
+
+            if (btn) {
+                if (data.is_enabled) {
+                    btn.textContent = '⏸️ Pausar Market Maker';
+                    btn.style.background = '#dc2626';
+                } else {
+                    btn.textContent = '▶️ Iniciar Market Maker';
+                    btn.style.background = '#059669';
+                }
+            }
+
+            if (pnl) pnl.textContent = `+$${(data.total_spread_pnl_usd || 0).toFixed(2)} USD`;
+            if (vol) vol.textContent = `$${(data.total_volume_quoted_usd || 0).toFixed(2)} USD`;
+            if (inv) inv.textContent = `${data.total_inventory_exposure || 0} contratos`;
+            if (params) params.textContent = `γ=${data.gamma_risk_aversion || 0.25} | κ=${data.kappa_liquidity || 1.80}`;
+
+            if (tbody) {
+                const quotes = data.active_market_quotes || [];
+                if (!quotes.length) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No hay cotizaciones pasivas activas actualmente.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = quotes.map(q => {
+                    let st = '<span class="badge" style="background: rgba(34,197,94,0.2); color: #4ade80;">ACTIVO (QUOTING)</span>';
+                    if (q.status === 'RETREAT_TOXIC') {
+                        st = '<span class="badge" style="background: rgba(239,68,68,0.2); color: #f87171;">🛡️ RETREAT (TOXIC VPIN)</span>';
+                    } else if (q.status.includes('MAX_INVENTORY')) {
+                        st = `<span class="badge" style="background: rgba(234,179,8,0.2); color: #fde047;">⚠️ ${q.status}</span>`;
+                    }
+
+                    return `<tr>
+                        <td><strong>${q.market_id}</strong></td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.15); color: #93c5fd;">${q.symbol}</span></td>
+                        <td>$${q.mid_price.toFixed(3)}</td>
+                        <td><strong style="color: #c084fc;">$${q.reservation_price.toFixed(3)}</strong></td>
+                        <td><span style="color: #34d399; font-weight: 700;">$${q.optimal_bid.toFixed(3)}</span></td>
+                        <td><span style="color: #f87171; font-weight: 700;">$${q.optimal_ask.toFixed(3)}</span></td>
+                        <td><span style="font-family: monospace;">$${(q.half_spread * 2).toFixed(3)}</span></td>
+                        <td><strong>${q.inventory_q > 0 ? `+${q.inventory_q}` : q.inventory_q}</strong></td>
+                        <td>${st}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        async function toggleMarketMaking() {
+            try {
+                const resp = await fetch('/api/market-making/toggle', { method: 'POST' });
+                const data = await resp.json();
+                fetchMarketMaking();
+            } catch (e) {
+                console.error('Error toggling MM:', e);
+            }
+        }
+
         // Inicial
         setTimeout(() => {
             fetchSignals();
@@ -4110,6 +4462,9 @@
             fetchCombinatorialArb();
             fetchBlackScholesSignals();
             fetchVPINStatus();
+            fetchMarketMaking();
+            fetchMultiExchange();
+            fetchWalletHealth();
         }, 2000);
 
         addLog('Dashboard cargado. Esperando conexión con Polymarket...', 'info');
