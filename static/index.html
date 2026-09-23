@@ -1803,6 +1803,10 @@
                         <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(30,41,59,0.7);padding:6px 12px;border-radius:20px;font-size:0.85rem;border:1px solid rgba(148,163,184,0.3);"><input type="checkbox" id="rank-only-operating" onchange="setRankFilter()"> Solo operaron</label>
                         <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(30,41,59,0.7);padding:6px 12px;border-radius:20px;font-size:0.85rem;border:1px solid rgba(148,163,184,0.3);"><input type="checkbox" id="rank-only-ml" onchange="setRankFilter()"> Solo con ML</label>
                         <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;">Mín. cerrados <input type="number" id="rank-min-closed" value="0" min="0" style="width:56px;background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-radius:6px;padding:4px 6px;" onchange="setRankFilter()"></label>
+                        <select id="rank-mode" onchange="fetchStrategyRanking()" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-radius:8px;padding:6px 10px;font-size:0.85rem;">
+                            <option value="realistic">💰 Realista $1,000</option>
+                            <option value="research">🔬 Research (por estrategia)</option>
+                        </select>
                         <select id="rank-sort" onchange="setRankFilter()" style="background:#0f172a;color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-radius:8px;padding:6px 10px;font-size:0.85rem;">
                             <option value="score">Ordenar: Score</option>
                             <option value="total_pnl_usd">Ordenar: PnL</option>
@@ -4167,7 +4171,9 @@
 
         async function fetchStrategyRanking() {
             try {
-                const resp = await fetch('/api/strategy-ranking');
+                const modeEl = document.getElementById('rank-mode');
+                const mode = modeEl ? modeEl.value : 'realistic';
+                const resp = await fetch('/api/strategy-ranking?mode=' + mode);
                 const data = await resp.json();
                 renderStrategyRanking(data);
             } catch (e) { console.error('Error fetching ranking:', e); }

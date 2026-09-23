@@ -26,7 +26,7 @@ from config import (
 from market_registry import registry
 from polymarket_client import pm_client
 from strategies import engine
-from paper_tracker import paper_tracker
+from paper_tracker import paper_tracker, paper_tracker_research
 from live_execution import live_manager
 from lead_lag_engine import lead_lag_engine
 from ai_learning_engine import ai_learning_engine
@@ -702,6 +702,7 @@ async def strategy_calculation_task():
                 for sig in signals:
                     # Evaluar si la señal es Top Sniper y registrar en Paper Tracker
                     paper_tracker.evaluate_and_record_signal(sig, m)
+                    paper_tracker_research.evaluate_and_record_signal(sig, m)
                     # Evitar duplicados recientes
                     sig_key = sig.get("dedupe_key") or f"{sig.get('strategy_code')}:{sig.get('token')}:{sig.get('side')}"
                     existing = [
@@ -715,6 +716,7 @@ async def strategy_calculation_task():
 
             # Actualizar precios en vivo para las posiciones abiertas de Paper Trading
             paper_tracker.update_live_prices(registry)
+            paper_tracker_research.update_live_prices(registry)
             registry.system_stats["strategy_diagnostics"] = build_strategy_diagnostics()
 
             # Broadcast a todos los clientes del dashboard
@@ -950,10 +952,14 @@ async def get_strategy_performance():
 
 
 @app.get("/api/strategy-ranking")
-async def get_strategy_ranking():
-    """Ranking cuantitativo de estrategias con significancia estadística, validación ML y ETA."""
-    paper_tracker.update_live_prices(registry)
-    return build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml)
+async def get_strategy_ranking(mode: str = Query(default="realistic")):
+    """Ranking cuantitativo de estrategias con significancia estadística, validación ML y ETA.
+
+    mode: "realistic" (cuenta de $1,000) o "research" (presupuesto aislado por estrategia).
+    """
+    engine = paper_tracker_research if mode == "research" else paper_tracker
+    engine.update_live_prices(registry)
+    return build_strategy_ranking(engine, ai_learning_engine, quant_ml, mode=mode)
 
 
 @app.post("/api/track-record/reset")

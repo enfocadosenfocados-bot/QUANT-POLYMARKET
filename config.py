@@ -22,6 +22,8 @@ PAPER_MAX_EXPOSURE_USD = 1000.0 # Capital máximo total en posiciones abiertas
 PAPER_MAX_OPEN_POSITIONS = 12   # Nº máximo de posiciones abiertas simultáneas
 PAPER_SLIPPAGE_BPS = 5          # Slippage de entrada en puntos básicos (0.05%)
 PAPER_FEE_RATE = 0.0            # Comisión por trade (Polymarket típicamente 0)
+PAPER_RESEARCH_BUDGET_PER_STRATEGY = 2000.0  # Presupuesto aislado por estrategia (Modo Research)
+PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY = 25    # Plazas por estrategia (Modo Research)
          # Máximo mercados en WebSocket
 
 # Parámetros de estrategias

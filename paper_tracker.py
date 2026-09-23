@@ -15,6 +15,8 @@ try:
         PAPER_SLIPPAGE_BPS,
         PAPER_FEE_RATE,
         PAPER_ENFORCE_CAPITAL,
+        PAPER_RESEARCH_BUDGET_PER_STRATEGY,
+        PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
     )
 except ImportError:
     PAPER_MAX_EXPOSURE_USD = 1000.0
@@ -22,6 +24,8 @@ except ImportError:
     PAPER_SLIPPAGE_BPS = 5
     PAPER_FEE_RATE = 0.0
     PAPER_ENFORCE_CAPITAL = True
+    PAPER_RESEARCH_BUDGET_PER_STRATEGY = 2000.0
+    PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY = 25
 
 
 def utc_now() -> datetime:
@@ -129,10 +133,13 @@ def classify_time_horizon(market: Any) -> Dict[str, Any]:
 
 
 class PaperTradingEngine:
-    def __init__(self, storage_path: Optional[Path] = None):
+    def __init__(self, storage_path: Optional[Path] = None, budget_mode: str = "global", budget_per_strategy: float = 2000.0, max_open_per_strategy: int = 25):
         self.storage_path = storage_path or (Path(__file__).resolve().parent / "paper_trades.json")
         self.initial_balance = 1000.0  # $1,000 USD de capital simulado
         self.position_size_usd = 25.0  # Fallback base ($25 USD)
+        self.budget_mode = budget_mode  # "global" (realista) o "per_strategy" (research)
+        self.budget_per_strategy = budget_per_strategy
+        self.max_open_per_strategy = max_open_per_strategy
         self.trades: Dict[str, Dict[str, Any]] = {}
         self._load_from_disk()
 
@@ -289,15 +296,26 @@ class PaperTradingEngine:
         if trade_key in self.trades:
             return self.trades[trade_key]
 
-        # ===== Bloque 1: límite de capital realista + ejecución con slippage/fees =====
+        # ===== Bloque 1: límite de capital + ejecución con slippage/fees =====
+        # Modo Realista (global): presupuesto único de $1,000.
+        # Modo Research (per_strategy): presupuesto aislado por estrategia.
         total_open_exposure = 0.0
         if PAPER_ENFORCE_CAPITAL:
             open_trades = [t for t in self.trades.values() if t.get("status") == "OPEN"]
-            total_open_exposure = sum(to_float(t.get("position_size_usd"), 0.0) for t in open_trades)
-            if len(open_trades) >= PAPER_MAX_OPEN_POSITIONS:
+            strat_code = signal.get("strategy_code", "GEN")
+            if self.budget_mode == "per_strategy":
+                relevant = [t for t in open_trades if t.get("strategy_code") == strat_code]
+                max_open = self.max_open_per_strategy
+                max_exposure = self.budget_per_strategy
+            else:
+                relevant = open_trades
+                max_open = PAPER_MAX_OPEN_POSITIONS
+                max_exposure = PAPER_MAX_EXPOSURE_USD
+            total_open_exposure = sum(to_float(t.get("position_size_usd"), 0.0) for t in relevant)
+            if len(relevant) >= max_open:
                 signal["capital_skipped"] = "max_positions"
                 return None
-            available = PAPER_MAX_EXPOSURE_USD - total_open_exposure
+            available = max_exposure - total_open_exposure
             if available < 10.0:
                 signal["capital_skipped"] = "no_capital"
                 return None
@@ -884,5 +902,13 @@ class PaperTradingEngine:
         self.save_to_disk()
 
 
-# Instancia global
+# Instancia global (Modo Realista: presupuesto único de $1,000)
 paper_tracker = PaperTradingEngine()
+
+# Instancia del Modo Research (presupuesto aislado por estrategia)
+paper_tracker_research = PaperTradingEngine(
+    storage_path=Path(__file__).resolve().parent / "paper_trades_research.json",
+    budget_mode="per_strategy",
+    budget_per_strategy=PAPER_RESEARCH_BUDGET_PER_STRATEGY,
+    max_open_per_strategy=PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
+)

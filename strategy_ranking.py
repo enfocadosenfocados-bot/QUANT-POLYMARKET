@@ -183,9 +183,13 @@ def ml_effect(kelly):
     return {"pct": pct, "label": label, "direction": direction}
 
 
-def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml) -> Dict[str, Any]:
+def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml, mode: str = "realistic") -> Dict[str, Any]:
     """Construye el ranking completo cruzando paper trading + IA + Quant ML."""
     trades = list(getattr(paper_tracker, "trades", {}).values()) or []
+    if mode == "research":
+        budget = getattr(paper_tracker, "budget_per_strategy", 1000.0)
+    else:
+        budget = getattr(paper_tracker, "initial_balance", 1000.0)
 
     try:
         ai_status = ai_learning_engine.get_status() or {}
@@ -223,7 +227,11 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml) -> Dict[
     now = datetime.now(UTC).timestamp()
     rows: List[Dict[str, Any]] = []
 
-    for code, tlist in by_strat.items():
+    # Mostrar TODAS las estrategias conocidas (con y sin trades)
+    all_codes = sorted(set(meta.keys()) | set(by_strat.keys()), key=lambda c: (c not in by_strat, c))
+
+    for code in all_codes:
+        tlist = by_strat.get(code, [])
         closed = [t for t in tlist if t.get("status") in ("WON", "LOST")]
         open_ = [t for t in tlist if t.get("status") == "OPEN"]
         wins = [t for t in closed if t.get("status") == "WON"]
@@ -345,6 +353,7 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml) -> Dict[
             "realized_pnl_usd": round(realized, 2),
             "unrealized_pnl_usd": round(unrealized, 2),
             "total_pnl_usd": round(total, 2),
+            "roi_pct": round(total / budget * 100.0, 2) if budget > 0 else 0.0,
             "win_rate_pct": round(win_rate, 1),
             "profit_factor": pf,
             "breakeven_pct": round(breakeven * 100.0, 1),
@@ -439,6 +448,8 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml) -> Dict[
     corr.sort(key=lambda x: abs(x["correlation"]), reverse=True)
 
     return {
+        "mode": mode,
+        "budget": round(budget, 2),
         "total_strategies": len(rows),
         "operating_count": len(operating),
         "ml_active_count": len(ml_rows),
