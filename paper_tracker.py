@@ -170,6 +170,26 @@ class PaperTradingEngine:
         edge = to_float(signal.get("edge"), 0.0)
         side = str(signal.get("side") or "BUY").upper()
 
+        # ===== Gobernador: pausas, drawdown global y reglas dinámicas =====
+        try:
+            from strategy_governor import governor
+            sg_code = signal.get("strategy_code", "GEN")
+            if governor.is_globally_paused():
+                signal["governor_skipped"] = "global_paused"
+                return None
+            if governor.is_paused(sg_code):
+                signal["governor_skipped"] = "paused"
+                return None
+            _rules = governor.get_rules(sg_code)
+            if _rules.get("min_confidence") and confidence < to_float(_rules.get("min_confidence"), 0.0):
+                signal["governor_skipped"] = "below_min_confidence"
+                return None
+            if _rules.get("max_entry_price") and entry_price > to_float(_rules.get("max_entry_price"), 0.0):
+                signal["governor_skipped"] = "above_max_entry_price"
+                return None
+        except ImportError:
+            pass
+
         if entry_price <= 0.01 or entry_price >= 0.99:
             return None
 
@@ -208,8 +228,19 @@ class PaperTradingEngine:
         # Dimensionamiento Dinámico Kelly con Multiplicador de Auto-Aprendizaje IA
         closed_pnl = sum(t.get("realized_pnl_usd", 0.0) for t in self.trades.values() if t.get("status") in ("WON", "LOST"))
         current_equity = max(200.0, self.initial_balance + closed_pnl)
+
+        # Kelly con edge real: mezclar la confianza de la señal con el win rate empírico de la estrategia
+        kelly_confidence = confidence
+        _sg_code = signal.get("strategy_code", "GEN")
+        _strat_closed = [t for t in self.trades.values() if t.get("strategy_code") == _sg_code and t.get("status") in ("WON", "LOST")]
+        if len(_strat_closed) >= 5:
+            _emp_wr = sum(1 for t in _strat_closed if t.get("status") == "WON") / len(_strat_closed) * 100.0
+            kelly_confidence = min(99.0, 0.5 * confidence + 0.5 * _emp_wr)
+            signal["empirical_win_rate_pct"] = round(_emp_wr, 1)
+            signal["kelly_confidence_pct"] = round(kelly_confidence, 1)
+
         kelly_data = calculate_kelly_size(
-            confidence=confidence,
+            confidence=kelly_confidence,
             entry_price=entry_price,
             target_price=target_price,
             stop_loss=stop_loss,
@@ -573,6 +604,22 @@ class PaperTradingEngine:
                         tr["ai_post_mortem_done"] = True
             except Exception:
                 pass
+
+        # ===== Gobernador: circuit breaker + auto-tuning + drawdown global =====
+        try:
+            from strategy_governor import governor
+            by_code = {}
+            for t in self.trades.values():
+                if t.get("status") in ("WON", "LOST"):
+                    by_code.setdefault(t.get("strategy_code", "GEN"), []).append(t)
+            for code, closed in by_code.items():
+                budget = self.budget_per_strategy if self.budget_mode == "per_strategy" else self.initial_balance
+                governor.evaluate_strategy(code, closed, budget)
+            if self.budget_mode == "global":
+                realized = sum(to_float(t.get("realized_pnl_usd", 0.0), 0.0) for t in self.trades.values() if t.get("status") in ("WON", "LOST"))
+                governor.update_portfolio_drawdown(self.initial_balance + realized, self.initial_balance)
+        except Exception:
+            pass
 
     def get_summary(self) -> Dict[str, Any]:
         """Calcula métricas agregadas del track record incluyendo Sharpe, Drawdown y Equity Curve."""
