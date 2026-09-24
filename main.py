@@ -33,6 +33,7 @@ from ai_learning_engine import ai_learning_engine
 from news_oracle_agent import news_oracle_agent
 from quant_ml_engine import quant_ml
 from strategy_ranking import build_strategy_ranking
+from strategy_governor import governor
 from black_scholes_digital import bs_digital_engine
 from vpin_microstructure import vpin_manager
 from avellaneda_stoikov import avellaneda_stoikov_engine
@@ -960,6 +961,12 @@ async def get_strategy_ranking(mode: str = Query(default="realistic")):
     engine = paper_tracker_research if mode == "research" else paper_tracker
     engine.update_live_prices(registry)
     return build_strategy_ranking(engine, ai_learning_engine, quant_ml, mode=mode)
+
+
+@app.get("/api/governor")
+async def get_governor():
+    """Estado del gobernador: estrategias pausadas, reglas dinamicas y drawdown global."""
+    return governor.get_status()
 
 
 @app.post("/api/track-record/reset")

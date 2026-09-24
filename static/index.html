@@ -1797,6 +1797,13 @@
                     <div class="card"><div class="card-header"><span class="card-title">Distribución Tiers</span></div><div class="card-value" id="rank-kpi-tiers" style="font-size:1.2rem;">--</div><div class="card-delta text-muted">A / B / C automáticos</div></div>
                     <div class="card"><div class="card-header"><span class="card-title">Líder por Score</span></div><div class="card-value green" id="rank-kpi-best" style="font-size:1.2rem;">--</div><div class="card-delta text-muted" id="rank-kpi-best-sub">--</div></div>
                 </div>
+                <div class="market-category-toolbar" style="margin-bottom: 20px;">
+                    <div>
+                        <div class="market-category-title">🛡️ Gobernador de Estrategias</div>
+                        <div class="market-category-subtitle" id="governor-status-text">Cargando estado del gobernador...</div>
+                    </div>
+                    <button class="btn-action" onclick="fetchGovernor()">🔄 Actualizar</button>
+                </div>
                 <div class="market-category-toolbar">
                     <div><div class="market-category-title">📊 Tabla de Ranking</div><div class="market-category-subtitle">Filtra y ordena para ver las mejores de las mejores.</div></div>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -4176,6 +4183,7 @@
                 const resp = await fetch('/api/strategy-ranking?mode=' + mode);
                 const data = await resp.json();
                 renderStrategyRanking(data);
+                fetchGovernor();
             } catch (e) { console.error('Error fetching ranking:', e); }
         }
 
@@ -4239,7 +4247,7 @@
             const eta = r.eta_days != null ? r.eta_days + 'd' : '—';
             return '<tr>' +
                 '<td>' + (r.rank_badge || '') + '</td>' +
-                '<td style="text-align:left;">' + (r.icon || '') + ' <strong>' + (r.name || r.code) + '</strong><br><small class="text-muted">' + (r.category_meta || '') + '</small></td>' +
+                '<td style="text-align:left;">' + (r.paused ? '⏸️ ' : '') + (r.icon || '') + ' <strong>' + (r.name || r.code) + '</strong>' + (r.paused ? ' <span style="color:#f87171;font-size:0.7rem;font-weight:700;">PAUSADA</span>' : '') + '<br><small class="text-muted">' + (r.category_meta || '') + '</small></td>' +
                 '<td>' + tierBadge(r.tier) + '</td>' +
                 '<td>' + r.total_trades + ' / ' + r.closed_trades_count + '</td>' +
                 '<td' + (r.below_breakeven ? ' style="color:#f87171;font-weight:700;"' : '') + '>' + rnum(r.win_rate_pct,1) + '%' + (r.below_breakeven ? ' ⚠️' : '') + '</td>' +
@@ -4258,6 +4266,34 @@
             const code = btn.getAttribute('data-code');
             const el = document.getElementById('rank-detail-' + code);
             if (el) el.style.display = (el.style.display === 'none' ? 'table-row' : 'none');
+        }
+
+        async function fetchGovernor() {
+            try {
+                const resp = await fetch('/api/governor');
+                const data = await resp.json();
+                renderGovernor(data);
+            } catch (e) { console.error('Error governor:', e); }
+        }
+
+        function renderGovernor(d) {
+            const el = document.getElementById('governor-status-text');
+            if (!el) return;
+            const paused = Object.keys(d.paused || {});
+            const rules = d.rules || {};
+            const ruleKeys = Object.keys(rules);
+            let txt = '';
+            if (d.global_paused) {
+                txt = '🔴 DRAWDOWN GLOBAL: nuevas entradas FRENADAS';
+            } else if (paused.length) {
+                txt = '⏸️ Estrategias pausadas: ' + paused.join(', ');
+            } else {
+                txt = '🟢 Operación normal. Sin estrategias pausadas.';
+            }
+            if (ruleKeys.length) {
+                txt += '  |  Reglas dinámicas activas: ' + ruleKeys.join(', ');
+            }
+            el.textContent = txt;
         }
 
         function renderStrategyRanking(data) {

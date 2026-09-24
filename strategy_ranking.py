@@ -14,6 +14,11 @@ from datetime import UTC, datetime
 from math import sqrt
 from typing import Any, Dict, List, Optional, Tuple
 
+try:
+    from strategy_governor import governor as _governor
+except Exception:
+    _governor = None
+
 MIN_CLOSED_FOR_ML = 15
 MIN_CLOSED_FOR_FILTER = 20
 BRIER_BAD = 0.20
@@ -395,6 +400,8 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml, mode: st
             "lessons": lessons.get(code, [])[:5],
             "tier": tier,
             "tier_action": tier_action,
+            "paused": bool(_governor and _governor.is_paused(code)),
+            "governor_rules": _governor.get_rules(code) if _governor else {},
             "score": round(score, 2),
         })
 
