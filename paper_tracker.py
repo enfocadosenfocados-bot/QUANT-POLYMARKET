@@ -278,13 +278,23 @@ class PaperTradingEngine:
         is_fast_strategy = signal.get("strategy_code") in ("S20", "S24", "S22", "BA", "LL_SNIPER")
         is_flash_horizon = horizon_info["code"] == "flash" or to_float(horizon_info.get("hours_left"), 999) <= 48.0
 
-        is_sniper = (
-            confidence >= 75.0
-            and (is_flash_horizon or is_fast_strategy)
-            and entry_price > 0.02
-            and entry_price < 0.98
-            and (liquidity >= 1000.0 or volume_24h >= 5000.0)
-        )
+        if self.budget_mode == "per_strategy":
+            # Modo Research: criterio relajado para que TODAS las estrategias operen
+            is_sniper = (
+                confidence >= 60.0
+                and entry_price > 0.02
+                and entry_price < 0.98
+                and (liquidity >= 500.0 or volume_24h >= 1000.0)
+            )
+        else:
+            # Modo Realista: criterio estricto (solo sniper)
+            is_sniper = (
+                confidence >= 75.0
+                and (is_flash_horizon or is_fast_strategy)
+                and entry_price > 0.02
+                and entry_price < 0.98
+                and (liquidity >= 1000.0 or volume_24h >= 5000.0)
+            )
 
         signal["is_top_sniper"] = is_sniper
 

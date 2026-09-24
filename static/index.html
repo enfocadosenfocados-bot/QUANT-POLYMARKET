@@ -4242,7 +4242,7 @@
                 '<td style="text-align:left;">' + (r.icon || '') + ' <strong>' + (r.name || r.code) + '</strong><br><small class="text-muted">' + (r.category_meta || '') + '</small></td>' +
                 '<td>' + tierBadge(r.tier) + '</td>' +
                 '<td>' + r.total_trades + ' / ' + r.closed_trades_count + '</td>' +
-                '<td>' + rnum(r.win_rate_pct,1) + '%</td>' +
+                '<td' + (r.below_breakeven ? ' style="color:#f87171;font-weight:700;"' : '') + '>' + rnum(r.win_rate_pct,1) + '%' + (r.below_breakeven ? ' ⚠️' : '') + '</td>' +
                 '<td>' + (r.edge_pct >= 0 ? '+' : '') + rnum(r.edge_pct,1) + '%</td>' +
                 '<td>' + rpnl(r.total_pnl_usd) + '</td>' +
                 '<td>' + rnum(r.sharpe,2) + '</td>' +

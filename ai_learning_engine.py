@@ -260,15 +260,15 @@ class AILearningEngine:
         genera una reflexión estructurada para auto-aprendizaje.
         """
         status = trade.get("status", "")
-        pnl = float(trade.get("pnl", 0.0))
+        pnl = float(trade.get("realized_pnl_usd", trade.get("pnl", 0.0)))
         entry_price = float(trade.get("entry_price", 0.50))
         predicted_prob = float(trade.get("confidence", 0.80))
         if predicted_prob > 1.0:
             predicted_prob /= 100.0
         predicted_prob = max(0.01, min(0.99, predicted_prob))
-        strategy_id = trade.get("strategy_id", "UNKNOWN")
-        market_title = trade.get("market_title", "Mercado Desconocido")
-        trade_id = trade.get("id", str(time.time()))
+        strategy_id = trade.get("strategy_code") or trade.get("strategy_id", "UNKNOWN")
+        market_title = trade.get("market_question", trade.get("market_title", "Mercado Desconocido"))
+        trade_id = trade.get("trade_id") or trade.get("id", str(time.time()))
 
         outcome = 1 if pnl > 0 else 0
         brier_err = (predicted_prob - outcome) ** 2
@@ -335,8 +335,15 @@ class AILearningEngine:
         3. Calcula métricas por estrategia y ajusta ponderaciones de Kelly.
         """
         now = time.time()
-        # Combinar baseline estadístico con las operaciones reales cerradas del track record
-        effective_trades = self._generate_baseline_history() + list(closed_trades)
+        # Calibrar SOLO con operaciones reales cerradas (sin baseline sintético).
+        effective_trades = list(closed_trades)
+        if not effective_trades:
+            self.last_calibration_time = now
+            return {
+                "status": "NO_DATA",
+                "calibrated_at": now,
+                "message": "Sin trades reales cerrados todavía; no se generan métricas sintéticas.",
+            }
 
         all_forecasts = []
         all_outcomes = []
@@ -347,8 +354,8 @@ class AILearningEngine:
             if prob > 1.0:
                 prob = prob / 100.0
             prob = max(0.01, min(0.99, prob))
-            pnl = float(tr.get("pnl", 0.0))
-            strat = tr.get("strategy_id", "GENERIC")
+            pnl = float(tr.get("realized_pnl_usd", tr.get("pnl", 0.0)))
+            strat = tr.get("strategy_code") or tr.get("strategy_id", "GENERIC")
             outcome = 1 if pnl > 0 else 0
 
             all_forecasts.append(prob)
@@ -479,5 +486,3 @@ class AILearningEngine:
 
 # Instancia singleton del motor de auto-aprendizaje
 ai_learning_engine = AILearningEngine()
-# Inicialización automática con historial base
-ai_learning_engine.run_daily_calibration([])

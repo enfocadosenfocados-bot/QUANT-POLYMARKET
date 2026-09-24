@@ -253,6 +253,7 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml, mode: st
         breakevens = [breakeven_for_trade(t) for t in (closed or tlist)]
         breakeven = (sum(breakevens) / len(breakevens)) if breakevens else 0.5
         edge = win_rate - breakeven * 100.0
+        below_breakeven = (nc > 0) and (win_rate < breakeven * 100.0)
 
         lo, hi = wilson_interval(nw, nc)
         significant_better = (nc >= MIN_CLOSED_FOR_ML) and (lo > breakeven)
@@ -358,6 +359,7 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml, mode: st
             "profit_factor": pf,
             "breakeven_pct": round(breakeven * 100.0, 1),
             "edge_pct": round(edge, 1),
+            "below_breakeven": below_breakeven,
             "wilson_lower_pct": round(lo * 100.0, 1),
             "wilson_upper_pct": round(hi * 100.0, 1),
             "significance": significance,
