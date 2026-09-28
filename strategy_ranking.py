@@ -257,7 +257,11 @@ def build_strategy_ranking(paper_tracker, ai_learning_engine, quant_ml, mode: st
 
         breakevens = [breakeven_for_trade(t) for t in (closed or tlist)]
         breakeven = (sum(breakevens) / len(breakevens)) if breakevens else 0.5
-        edge = win_rate - breakeven * 100.0
+        # Edge real: retorno medio por trade cerrado (%)
+        if nc > 0:
+            edge = sum(_f(t.get("realized_pnl_usd")) / max(1.0, _f(t.get("position_size_usd"))) * 100.0 for t in closed) / nc
+        else:
+            edge = 0.0
         below_breakeven = (nc > 0) and (win_rate < breakeven * 100.0)
 
         lo, hi = wilson_interval(nw, nc)

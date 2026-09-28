@@ -17,6 +17,9 @@ try:
         PAPER_ENFORCE_CAPITAL,
         PAPER_RESEARCH_BUDGET_PER_STRATEGY,
         PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
+        PAPER_MAX_HORIZON_HOURS,
+        PAPER_MAX_ENTRY_PRICE,
+        PAPER_EXCLUDED_STRATEGIES,
     )
 except ImportError:
     PAPER_MAX_EXPOSURE_USD = 1000.0
@@ -26,6 +29,9 @@ except ImportError:
     PAPER_ENFORCE_CAPITAL = True
     PAPER_RESEARCH_BUDGET_PER_STRATEGY = 2000.0
     PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY = 25
+    PAPER_MAX_HORIZON_HOURS = 720.0
+    PAPER_MAX_ENTRY_PRICE = 0.97
+    PAPER_EXCLUDED_STRATEGIES = ["S20", "S24", "S22"]
 
 
 def utc_now() -> datetime:
@@ -318,12 +324,14 @@ class PaperTradingEngine:
                 and (liquidity >= 500.0 or volume_24h >= 1000.0)
             )
         else:
-            # Modo Realista: criterio estricto (solo sniper)
+            # Modo Realista: horizonte hasta 30 dias + exclusion de perdedoras estructurales
+            _hours_left = to_float(horizon_info.get("hours_left"), 999)
             is_sniper = (
-                confidence >= 75.0
-                and (is_flash_horizon or is_fast_strategy)
+                signal.get("strategy_code", "GEN") not in PAPER_EXCLUDED_STRATEGIES
+                and confidence >= 75.0
+                and _hours_left <= PAPER_MAX_HORIZON_HOURS
                 and entry_price > 0.02
-                and entry_price < 0.98
+                and entry_price < PAPER_MAX_ENTRY_PRICE
                 and (liquidity >= 1000.0 or volume_24h >= 5000.0)
             )
 
