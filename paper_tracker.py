@@ -13,7 +13,8 @@ try:
         PAPER_MAX_EXPOSURE_USD,
         PAPER_MAX_OPEN_POSITIONS,
         PAPER_SLIPPAGE_BPS,
-        PAPER_FEE_RATE,
+        POLYMARKET_FEE_RATE,
+        POLYMARKET_DEFAULT_FEE_RATE,
         PAPER_ENFORCE_CAPITAL,
         PAPER_RESEARCH_BUDGET_PER_STRATEGY,
         PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
@@ -383,14 +384,18 @@ class PaperTradingEngine:
         exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
         exec_price = max(0.01, min(0.99, exec_price))
 
-        fee_usd = round(trade_size_usd * PAPER_FEE_RATE + PAPER_GAS_COST_USD, 4)
+        _cat = str(signal.get("market_category") or getattr(market, "category", "") or "other").lower()
+        fee_rate = POLYMARKET_FEE_RATE.get(_cat, POLYMARKET_DEFAULT_FEE_RATE)
+        fee_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price), 4)
         effective_size_usd = max(0.0, trade_size_usd - fee_usd)
 
         shares = round(effective_size_usd / exec_price, 2)
         signal["execution_price"] = round(exec_price, 4)
         signal["slippage_bps"] = round(total_slippage_bps, 2)
         signal["fee_usd"] = fee_usd
-        signal["exit_cost_usd"] = round(PAPER_GAS_COST_USD + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4)
+        signal["fee_rate"] = fee_rate
+        exit_fee = trade_size_usd * fee_rate * (1.0 - exec_price)
+        signal["exit_cost_usd"] = round(exit_fee + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4)
         signal["capital_exposure_usd"] = round(total_open_exposure + trade_size_usd, 2)
 
         new_trade = {

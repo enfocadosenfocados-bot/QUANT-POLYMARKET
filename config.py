@@ -21,7 +21,23 @@ PAPER_ENFORCE_CAPITAL = True    # Activar límite realista de capital (cuenta de
 PAPER_MAX_EXPOSURE_USD = 1000.0 # Capital máximo total en posiciones abiertas
 PAPER_MAX_OPEN_POSITIONS = 12   # Nº máximo de posiciones abiertas simultáneas
 PAPER_SLIPPAGE_BPS = 20         # Slippage de entrada base (0.20%)
-PAPER_FEE_RATE = 0.01           # Comisión sobre el nocional (1% conservador)
+# Fee TAKER de Polymarket por categoría (feeRate). fee = shares * feeRate * p * (1-p)
+POLYMARKET_FEE_RATE = {
+    "crypto": 0.07,
+    "sports": 0.05,
+    "politics": 0.04,
+    "finance": 0.04,
+    "economics": 0.05,
+    "culture": 0.05,
+    "weather": 0.05,
+    "science": 0.04,
+    "tech": 0.04,
+    "mentions": 0.04,
+    "geopolitics": 0.0,
+    "other": 0.05,
+    "general": 0.05,
+}
+POLYMARKET_DEFAULT_FEE_RATE = 0.05
 PAPER_GAS_COST_USD = 0.05        # Gas por trade (Polygon, orden + settlement)
 PAPER_IMPACT_BPS_PER_1K = 5      # Impacto de mercado: +5bps por cada $1,000 de tamaño
 PAPER_RESEARCH_BUDGET_PER_STRATEGY = 2000.0  # Presupuesto aislado por estrategia (Modo Research)
