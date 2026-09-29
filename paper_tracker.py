@@ -15,6 +15,8 @@ try:
         PAPER_SLIPPAGE_BPS,
         POLYMARKET_FEE_RATE,
         POLYMARKET_DEFAULT_FEE_RATE,
+        POLYMARKET_MAKER_REBATE_RATE,
+        POLYMARKET_DEFAULT_MAKER_REBATE,
         PAPER_ENFORCE_CAPITAL,
         PAPER_RESEARCH_BUDGET_PER_STRATEGY,
         PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
@@ -378,22 +380,37 @@ class PaperTradingEngine:
                 signal["position_size_usd"] = trade_size_usd
 
         # ===== Costes realistas de ejecución =====
-        impact_bps = PAPER_IMPACT_BPS_PER_1K * (trade_size_usd / 1000.0)
-        total_slippage_bps = PAPER_SLIPPAGE_BPS + impact_bps
-        slippage = total_slippage_bps / 10000.0
-        exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
-        exec_price = max(0.01, min(0.99, exec_price))
+        if signal.get("is_maker"):
+            # Maker: no cruza el spread, sin slippage
+            total_slippage_bps = 0.0
+            exec_price = max(0.01, min(0.99, entry_price))
+        else:
+            impact_bps = PAPER_IMPACT_BPS_PER_1K * (trade_size_usd / 1000.0)
+            total_slippage_bps = PAPER_SLIPPAGE_BPS + impact_bps
+            slippage = total_slippage_bps / 10000.0
+            exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
+            exec_price = max(0.01, min(0.99, exec_price))
 
         _cat = str(signal.get("market_category") or getattr(market, "category", "") or "other").lower()
         fee_rate = POLYMARKET_FEE_RATE.get(_cat, POLYMARKET_DEFAULT_FEE_RATE)
-        fee_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price), 4)
-        effective_size_usd = max(0.0, trade_size_usd - fee_usd)
+        if signal.get("is_maker"):
+            # Maker: no paga fee taker; gana rebate (positivo)
+            rebate_rate = POLYMARKET_MAKER_REBATE_RATE.get(_cat, POLYMARKET_DEFAULT_MAKER_REBATE)
+            fee_usd = 0.0
+            rebate_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price) * rebate_rate, 4)
+            effective_size_usd = trade_size_usd + rebate_usd
+        else:
+            fee_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price), 4)
+            rebate_usd = 0.0
+            effective_size_usd = max(0.0, trade_size_usd - fee_usd)
 
         shares = round(effective_size_usd / exec_price, 2)
         signal["execution_price"] = round(exec_price, 4)
         signal["slippage_bps"] = round(total_slippage_bps, 2)
         signal["fee_usd"] = fee_usd
+        signal["rebate_usd"] = rebate_usd
         signal["fee_rate"] = fee_rate
+        signal["is_maker"] = bool(signal.get("is_maker"))
         exit_fee = trade_size_usd * fee_rate * (1.0 - exec_price)
         signal["exit_cost_usd"] = round(exit_fee + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4)
         signal["capital_exposure_usd"] = round(total_open_exposure + trade_size_usd, 2)
@@ -424,6 +441,8 @@ class PaperTradingEngine:
             "position_size_usd": round(effective_size_usd, 2),
             "execution_price": signal.get("execution_price", round(exec_price, 4)),
             "fee_usd": signal.get("fee_usd", 0.0),
+            "rebate_usd": signal.get("rebate_usd", 0.0),
+            "is_maker": signal.get("is_maker", False),
             "fee_rate": signal.get("fee_rate", 0.0),
             "exit_cost_usd": signal.get("exit_cost_usd", 0.0),
             "kelly_fraction_pct": kelly_data["kelly_fraction_pct"],
@@ -861,6 +880,14 @@ class PaperTradingEngine:
                 "category": "Asimetría Contractual UMA",
                 "icon": "📜",
                 "description": "Monetiza el sesgo de lectura superficial comprando NO cuando la regla legal estricta no se puede cumplir.",
+            },
+            "S25": {
+                "code": "S25",
+                "name": "Maker Rebate Harvester",
+                "tag": "S25: Maker Rebate",
+                "category": "Provisión de Liquidez / Maker",
+                "icon": "💰",
+                "description": "Compra en el bid (maker, sin fee taker) y vende en el ask, ganando spread + maker rebate (15-25%).",
             },
             "S24": {
                 "code": "S24",

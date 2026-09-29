@@ -72,6 +72,11 @@ class StrategyEngine:
         if sig:
             signals.append(sig)
 
+        # Estrategia S25: Maker Rebate Harvester
+        sig = self._maker_rebate(market)
+        if sig:
+            signals.append(sig)
+
         # Estrategia B: Bundle Arbitrage
         sig = self._bundle_arbitrage(market)
         if sig:
@@ -396,6 +401,49 @@ class StrategyEngine:
                     "depth_ask": str(depth_ask),
                     "volume_24h": str(m.volume_24h),
                 }
+            }
+        return None
+
+    def _maker_rebate(self, m: MarketSnapshot) -> Optional[Dict]:
+        """S25: Maker Rebate Harvester — compra en bid (maker) y vende en ask (maker)."""
+        for outcome in m.outcomes:
+            if outcome not in m.best_bid or outcome not in m.best_ask:
+                continue
+            bid = m.best_bid[outcome]
+            ask = m.best_ask[outcome]
+            mid = m.mid_price.get(outcome)
+            if not bid or not ask or not mid or mid <= 0 or ask <= bid:
+                continue
+            spread = ask - bid
+            spread_bps = int((spread / mid) * 10000)
+            if spread_bps < 25:
+                continue
+            if m.neg_risk:
+                continue
+            return {
+                "signal_id": str(uuid.uuid4())[:8],
+                "strategy": "S25: Maker Rebate Harvester",
+                "strategy_code": "S25",
+                "side": "BUY",
+                "token": outcome,
+                "entry_price": str(bid),
+                "bid_price": str(bid),
+                "ask_price": str(ask),
+                "target_price": str(ask),
+                "stop_loss": str(max(Decimal("0.01"), bid * Decimal("0.97"))),
+                "size": "100",
+                "confidence": 80,
+                "urgency": "MEDIUM",
+                "expected_profit_bps": spread_bps,
+                "is_maker": True,
+                "trigger_reason": f"Maker: compra en bid {float(bid):.4f} y vende en ask {float(ask):.4f} (spread {spread_bps} bps + rebate).",
+                "status": "ACTIVE",
+                "metrics": {
+                    "spread_bps": spread_bps,
+                    "bid": str(bid),
+                    "ask": str(ask),
+                    "is_maker": True,
+                },
             }
         return None
 

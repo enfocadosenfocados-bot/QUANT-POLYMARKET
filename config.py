@@ -38,6 +38,13 @@ POLYMARKET_FEE_RATE = {
     "general": 0.05,
 }
 POLYMARKET_DEFAULT_FEE_RATE = 0.05
+POLYMARKET_MAKER_REBATE_RATE = {
+    "crypto": 0.20, "sports": 0.15, "politics": 0.25, "finance": 0.25,
+    "economics": 0.25, "culture": 0.25, "weather": 0.25, "other": 0.25,
+    "general": 0.25, "mentions": 0.25, "tech": 0.25, "science": 0.25,
+    "geopolitics": 0.0,
+}
+POLYMARKET_DEFAULT_MAKER_REBATE = 0.20
 PAPER_GAS_COST_USD = 0.05        # Gas por trade (Polygon, orden + settlement)
 PAPER_IMPACT_BPS_PER_1K = 5      # Impacto de mercado: +5bps por cada $1,000 de tamaño
 PAPER_RESEARCH_BUDGET_PER_STRATEGY = 2000.0  # Presupuesto aislado por estrategia (Modo Research)
