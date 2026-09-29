@@ -20,6 +20,8 @@ try:
         PAPER_MAX_HORIZON_HOURS,
         PAPER_MAX_ENTRY_PRICE,
         PAPER_EXCLUDED_STRATEGIES,
+        PAPER_GAS_COST_USD,
+        PAPER_IMPACT_BPS_PER_1K,
     )
 except ImportError:
     PAPER_MAX_EXPOSURE_USD = 1000.0
@@ -32,6 +34,8 @@ except ImportError:
     PAPER_MAX_HORIZON_HOURS = 720.0
     PAPER_MAX_ENTRY_PRICE = 0.97
     PAPER_EXCLUDED_STRATEGIES = ["S20", "S24", "S22"]
+    PAPER_GAS_COST_USD = 0.05
+    PAPER_IMPACT_BPS_PER_1K = 5
 
 
 def utc_now() -> datetime:
@@ -372,19 +376,21 @@ class PaperTradingEngine:
                 trade_size_usd = round(available, 2)
                 signal["position_size_usd"] = trade_size_usd
 
-        # Slippage de entrada (comprar más caro / vender más barato)
-        slippage = PAPER_SLIPPAGE_BPS / 10000.0
+        # ===== Costes realistas de ejecución =====
+        impact_bps = PAPER_IMPACT_BPS_PER_1K * (trade_size_usd / 1000.0)
+        total_slippage_bps = PAPER_SLIPPAGE_BPS + impact_bps
+        slippage = total_slippage_bps / 10000.0
         exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
         exec_price = max(0.01, min(0.99, exec_price))
 
-        # Comisiones sobre el nocional
-        fee_usd = round(trade_size_usd * PAPER_FEE_RATE, 4)
-        effective_size_usd = trade_size_usd - fee_usd
+        fee_usd = round(trade_size_usd * PAPER_FEE_RATE + PAPER_GAS_COST_USD, 4)
+        effective_size_usd = max(0.0, trade_size_usd - fee_usd)
 
         shares = round(effective_size_usd / exec_price, 2)
         signal["execution_price"] = round(exec_price, 4)
-        signal["slippage_bps"] = PAPER_SLIPPAGE_BPS
+        signal["slippage_bps"] = round(total_slippage_bps, 2)
         signal["fee_usd"] = fee_usd
+        signal["exit_cost_usd"] = round(PAPER_GAS_COST_USD + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4)
         signal["capital_exposure_usd"] = round(total_open_exposure + trade_size_usd, 2)
 
         new_trade = {
@@ -501,7 +507,7 @@ class PaperTradingEngine:
                 # Verificación de Salida
                 if curr_float >= target:
                     trade["status"] = "WON"
-                    trade["realized_pnl_usd"] = round(pnl_usd, 2)
+                    trade["realized_pnl_usd"] = round(pnl_usd - to_float(trade.get("exit_cost_usd", 0.0)), 2)
                     trade["realized_pnl_pct"] = round(pnl_pct, 2)
                     trade["unrealized_pnl_usd"] = 0.0
                     trade["unrealized_pnl_pct"] = 0.0
@@ -509,7 +515,7 @@ class PaperTradingEngine:
                     trade["close_reason"] = f"🎯 Take Profit alcanzado (${curr_float:.3f} >= ${target:.3f})"
                     changed = True
                 elif curr_float <= current_stop:
-                    trade["realized_pnl_usd"] = round(pnl_usd, 2)
+                    trade["realized_pnl_usd"] = round(pnl_usd - to_float(trade.get("exit_cost_usd", 0.0)), 2)
                     trade["realized_pnl_pct"] = round(pnl_pct, 2)
                     trade["unrealized_pnl_usd"] = 0.0
                     trade["unrealized_pnl_pct"] = 0.0
@@ -546,7 +552,7 @@ class PaperTradingEngine:
 
                 if curr_float <= target:
                     trade["status"] = "WON"
-                    trade["realized_pnl_usd"] = round(pnl_usd, 2)
+                    trade["realized_pnl_usd"] = round(pnl_usd - to_float(trade.get("exit_cost_usd", 0.0)), 2)
                     trade["realized_pnl_pct"] = round(pnl_pct, 2)
                     trade["unrealized_pnl_usd"] = 0.0
                     trade["unrealized_pnl_pct"] = 0.0
@@ -554,7 +560,7 @@ class PaperTradingEngine:
                     trade["close_reason"] = f"🎯 Take Profit alcanzado (${curr_float:.3f} <= ${target:.3f})"
                     changed = True
                 elif curr_float >= current_stop:
-                    trade["realized_pnl_usd"] = round(pnl_usd, 2)
+                    trade["realized_pnl_usd"] = round(pnl_usd - to_float(trade.get("exit_cost_usd", 0.0)), 2)
                     trade["realized_pnl_pct"] = round(pnl_pct, 2)
                     trade["unrealized_pnl_usd"] = 0.0
                     trade["unrealized_pnl_pct"] = 0.0
@@ -578,7 +584,7 @@ class PaperTradingEngine:
                         elapsed_hours = (utc_now() - op_dt).total_seconds() / 3600.0
                         if elapsed_hours >= 48.0 and abs(pnl_pct) < 2.0:
                             trade["status"] = "WON" if pnl_usd >= 0 else "LOST"
-                            trade["realized_pnl_usd"] = round(pnl_usd, 2)
+                            trade["realized_pnl_usd"] = round(pnl_usd - to_float(trade.get("exit_cost_usd", 0.0)), 2)
                             trade["realized_pnl_pct"] = round(pnl_pct, 2)
                             trade["unrealized_pnl_usd"] = 0.0
                             trade["unrealized_pnl_pct"] = 0.0
