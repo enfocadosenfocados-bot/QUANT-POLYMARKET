@@ -1,0 +1,9 @@
+{
+  "orders": [],
+  "rejection_reasons": {
+    "sin libro real disponible": 218333,
+    "sin liquidez al precio l\u00edmite": 13932
+  },
+  "engine": "hybrid",
+  "updated_at": "2026-10-14T06:38:25.508016+00:00"
+}

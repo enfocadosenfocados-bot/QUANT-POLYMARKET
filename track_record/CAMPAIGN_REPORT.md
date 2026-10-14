@@ -1,8 +1,8 @@
 # Campaña demo: demo-15d
 
-- Día de campaña: **0.0** (mínimo objetivo: 15)
+- Día de campaña: **0.01** (mínimo objetivo: 15)
 - Campaña completa: NO
-- Trades: 149 (realista=14, research=135)
+- Trades: 149 (realista=14, research=135, híbrido=0)
 - Estrategias analizadas: 10
 
 | # | Estrategia | Trades | Cerrados | Win% | PnL neto $ | Veredicto |

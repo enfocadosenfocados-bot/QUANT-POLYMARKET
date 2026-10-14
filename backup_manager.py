@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -59,7 +60,29 @@ _LEDGER_KEYS = [
     "target_price", "stop_loss", "shares", "position_size_usd",
     "realized_pnl_usd", "realized_pnl_pct", "unrealized_pnl_usd",
     "unrealized_pnl_pct", "opened_at", "closed_at",
+    # Ejecución (Modo Híbrido: órdenes live simuladas contra el libro real)
+    "engine", "order_id", "order_status", "is_partial_fill",
+    "fill_ratio", "book_slippage_bps", "book_depth_usd", "book_levels_consumed",
 ]
+
+# Columnas del ledger/CSV de órdenes live simuladas (Modo Híbrido).
+_ORDERS_LEDGER_KEYS = [
+    "order_id", "recorded_at", "status", "reason", "market_id", "market_question",
+    "strategy_code", "token", "side", "confidence", "is_maker",
+    "signal_entry_price", "requested_size_usd",
+]
+
+# Campos del dict "fill" de cada orden simulada que se aplanan al ledger/CSV.
+_ORDERS_FILL_KEYS = [
+    "exec_price", "fill_ratio", "slippage_bps", "book_depth_usd",
+    "levels_consumed", "fee_usd", "rebate_usd",
+]
+
+# Solo estas órdenes se guardan en el ledger append-only por defecto: son las
+# que realmente se ejecutaron. Los rechazos "sin libro real disponible" se
+# producen a miles por hora y harían el respaldo inservible (el CSV sí los
+# conserva mientras estén dentro de HYBRID_KEEP_ORDERS).
+_ORDERS_LEDGER_STATUSES = {"FILLED", "PARTIAL", "MAKER_FILLED"}
 
 
 class BackupManager:
@@ -81,6 +104,8 @@ class BackupManager:
 
         self.ledger_path = self.track_dir / "ledger.jsonl"
         self.index_path = self.track_dir / ".ledger_index.json"
+        self.orders_ledger_path = self.track_dir / "hybrid_orders.jsonl"
+        self.orders_index_path = self.track_dir / ".orders_ledger_index.json"
         self.manifest_path = self.track_dir / "manifest.json"
 
         self.status: Dict[str, Any] = {
@@ -103,6 +128,15 @@ class BackupManager:
     # ------------------------------------------------------------------ #
     #  Snapshot + ledger append-only
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _source_for(name: str) -> str:
+        """Etiqueta de origen de cada archivo de track record."""
+        if name == "paper_trades.json":
+            return "realistic"
+        if name == "paper_trades_hybrid.json":
+            return "hybrid"
+        return "research"
+
     def _snapshot_files(self) -> Dict[str, str]:
         snap: Dict[str, str] = {}
         for name in self.files:
@@ -134,7 +168,7 @@ class BackupManager:
                 continue
             raw = _read_json(self.project_dir / name, {})
             trades = raw.get("trades", {}) if isinstance(raw, dict) else {}
-            source = "realistic" if name == "paper_trades.json" else "research"
+            source = self._source_for(name)
             for trade_id, t in trades.items():
                 if not isinstance(t, dict):
                     continue
@@ -154,6 +188,138 @@ class BackupManager:
         return len(lines)
 
     # ------------------------------------------------------------------ #
+    #  Órdenes live simuladas (Modo Híbrido) -> ledger + CSV
+    # ------------------------------------------------------------------ #
+    def _load_orders_index(self) -> set:
+        data = _read_json(self.orders_index_path, {})
+        return set(data.get("keys", []))
+
+    def _save_orders_index(self, keys: set) -> None:
+        tmp = self.orders_index_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"keys": sorted(keys)}), encoding="utf-8")
+        tmp.replace(self.orders_index_path)
+
+    @staticmethod
+    def _read_hybrid_orders() -> List[Dict[str, Any]]:
+        raw = _read_json(
+            Path(__file__).resolve().parent / "hybrid_orders.json", {}
+        )
+        if isinstance(raw, dict):
+            orders = raw.get("orders", [])
+        else:
+            orders = raw or []
+        return [o for o in orders if isinstance(o, dict)]
+
+    @staticmethod
+    def _flatten_order(order: Dict[str, Any]) -> Dict[str, Any]:
+        row: Dict[str, Any] = {}
+        for k in _ORDERS_LEDGER_KEYS:
+            row[k] = order.get(k)
+        fill = order.get("fill") or {}
+        for k in _ORDERS_FILL_KEYS:
+            row[k] = fill.get(k)
+        return row
+
+    @staticmethod
+    def _ledger_includes_rejected() -> bool:
+        """``HYBRID_ORDERS_LEDGER_ALL=1`` guarda también los rechazos (modo debug)."""
+        return str(os.getenv("HYBRID_ORDERS_LEDGER_ALL", "0")).lower() in ("1", "true", "yes")
+
+    def _append_orders_ledger(self) -> int:
+        """Añade al ledger append-only las órdenes simuladas nuevas (nunca reescribe)."""
+        index = self._load_orders_index()
+        lines: List[str] = []
+        now_iso = utc_now().isoformat()
+        keep_rejected = self._ledger_includes_rejected()
+
+        for order in self._read_hybrid_orders():
+            oid = order.get("order_id")
+            if not oid or oid in index:
+                continue
+            status = str(order.get("status") or "").upper()
+            if not keep_rejected and status not in _ORDERS_LEDGER_STATUSES:
+                continue
+            event = {"_source": "hybrid", "_ingested_at": now_iso}
+            event.update(self._flatten_order(order))
+            lines.append(json.dumps(event, ensure_ascii=False))
+            index.add(oid)
+
+        if lines:
+            with open(self.orders_ledger_path, "a", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+            self._save_orders_index(index)
+        return len(lines)
+
+    @staticmethod
+    def _hybrid_diagnostics() -> Dict[str, Any]:
+        """Resumen de ejecución del Modo Híbrido para el manifest (offline-friendly)."""
+        raw = _read_json(Path(__file__).resolve().parent / "hybrid_orders.json", {})
+        if not isinstance(raw, dict):
+            return {}
+        reasons = raw.get("rejection_reasons") or {}
+        orders = raw.get("orders") or []
+        return {
+            "orders_executed": len(orders),
+            "rejection_reasons": {str(k): int(v) for k, v in reasons.items()},
+            "rejections_total": sum(int(v) for v in reasons.values()),
+            "log_updated_at": raw.get("updated_at"),
+        }
+
+    def rebuild_orders_ledger(self) -> int:
+        """Reconstruye el ledger de órdenes desde el log actual (compacta ruido)."""
+        self.orders_ledger_path.unlink(missing_ok=True)
+        self.orders_index_path.unlink(missing_ok=True)
+        return self._append_orders_ledger()
+
+    def compact_orders_ledger(self) -> Dict[str, int]:
+        """Compacta el ledger existente conservando TODAS las ejecutadas.
+
+        Quita las líneas de rechazo (ruido masivo) y deduplica por ``order_id``,
+        pero nunca elimina una orden ejecutada: la historia real se respeta.
+        """
+        seen: Dict[str, Dict[str, Any]] = {}
+        dropped = 0
+        if self.orders_ledger_path.exists():
+            for line in self.orders_ledger_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    dropped += 1
+                    continue
+                oid = event.get("order_id")
+                status = str(event.get("status") or "").upper()
+                if not oid or status not in _ORDERS_LEDGER_STATUSES:
+                    dropped += 1
+                    continue
+                seen.setdefault(oid, event)
+
+        tmp = self.orders_ledger_path.with_suffix(".jsonl.tmp")
+        if seen:
+            with open(tmp, "w", encoding="utf-8") as f:
+                for event in seen.values():
+                    f.write(json.dumps(event, ensure_ascii=False) + "\n")
+            tmp.replace(self.orders_ledger_path)
+        else:
+            self.orders_ledger_path.unlink(missing_ok=True)
+        self._save_orders_index(set(seen))
+        return {"kept": len(seen), "dropped": dropped}
+
+    def _export_orders_csv(self) -> int:
+        """Exporta las órdenes simuladas a un CSV legible (Excel / Google Sheets)."""
+        orders = self._read_hybrid_orders()
+        cols = [*_ORDERS_LEDGER_KEYS, *_ORDERS_FILL_KEYS]
+        with open(self.track_dir / "hybrid_orders.csv", "w",
+                  encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+            w.writeheader()
+            for order in orders:
+                w.writerow(self._flatten_order(order))
+        return len(orders)
+
+    # ------------------------------------------------------------------ #
     #  Export CSV + ranking por estrategia
     # ------------------------------------------------------------------ #
     def _collect_trades(self) -> List[Dict[str, Any]]:
@@ -163,7 +329,7 @@ class BackupManager:
                 continue
             raw = _read_json(self.project_dir / name, {})
             trades = raw.get("trades", {}) if isinstance(raw, dict) else {}
-            source = "realistic" if name == "paper_trades.json" else "research"
+            source = self._source_for(name)
             for t in trades.values():
                 if isinstance(t, dict):
                     r: Dict[str, Any] = {"source": source}
@@ -195,6 +361,7 @@ class BackupManager:
                 "strategy_name": r.get("strategy") or code,
                 "total": 0, "open": 0, "won": 0, "lost": 0,
                 "realized_pnl_usd": 0.0, "unrealized_pnl_usd": 0.0,
+                "partial_fills": 0, "by_source": {},
             })
             s["total"] += 1
             st = r.get("status")
@@ -207,6 +374,27 @@ class BackupManager:
             s["realized_pnl_usd"] += float(r.get("realized_pnl_usd") or 0.0)
             s["unrealized_pnl_usd"] += float(r.get("unrealized_pnl_usd") or 0.0)
 
+            # Comparativa por motor (realistic / research / hybrid) y calidad de
+            # ejecución del Modo Híbrido (slippage real de libro y fills parciales).
+            src = r.get("source") or "unknown"
+            bucket = s["by_source"].setdefault(
+                src, {"total": 0, "won": 0, "lost": 0, "net_pnl_usd": 0.0}
+            )
+            bucket["total"] += 1
+            if st == "WON":
+                bucket["won"] += 1
+            elif st == "LOST":
+                bucket["lost"] += 1
+            bucket["net_pnl_usd"] += float(r.get("realized_pnl_usd") or 0.0) + float(
+                r.get("unrealized_pnl_usd") or 0.0
+            )
+            if r.get("is_partial_fill"):
+                s["partial_fills"] += 1
+            slip = r.get("book_slippage_bps")
+            if slip is not None:
+                s["_slip_sum"] = s.get("_slip_sum", 0.0) + float(slip)
+                s["_slip_n"] = s.get("_slip_n", 0) + 1
+
         ranking: List[Dict[str, Any]] = []
         for s in by_strat.values():
             closed = s["won"] + s["lost"]
@@ -215,6 +403,11 @@ class BackupManager:
             s["realized_pnl_usd"] = round(s["realized_pnl_usd"], 2)
             s["unrealized_pnl_usd"] = round(s["unrealized_pnl_usd"], 2)
             s["net_pnl_usd"] = round(s["realized_pnl_usd"] + s["unrealized_pnl_usd"], 2)
+            slip_n = s.pop("_slip_n", 0)
+            slip_sum = s.pop("_slip_sum", 0.0)
+            s["avg_book_slippage_bps"] = round(slip_sum / slip_n, 2) if slip_n else None
+            for bucket in s["by_source"].values():
+                bucket["net_pnl_usd"] = round(bucket["net_pnl_usd"], 2)
             if closed < 10:
                 s["verdict"] = "MUESTRA_INSUFICIENTE"
             elif s["win_rate_pct"] >= 55 and s["net_pnl_usd"] > 0:
@@ -254,9 +447,35 @@ class BackupManager:
                 return {"ok": False, "detail": str(e)}
         return {"ok": True, "detail": f"copiado a {dest}"}
 
+    @staticmethod
+    def _resolve_git_token() -> str:
+        """Token para el push, en orden de prioridad:
+
+        1. ``BACKUP_GIT_TOKEN`` (explícito en ``.env``),
+        2. ``GITHUB_TOKEN`` / ``GH_TOKEN`` del entorno,
+        3. ``gh auth token`` (CLI de GitHub ya autenticada).
+
+        Resolverlo en tiempo de ejecución evita guardar secretos en ``.env`` y
+        sobrevive a la rotación del token OAuth de ``gh``.
+        """
+        token = getattr(config, "BACKUP_GIT_TOKEN", "").strip()
+        if token:
+            return token
+        token = os.getenv("GITHUB_TOKEN", "").strip() or os.getenv("GH_TOKEN", "").strip()
+        if token:
+            return token
+        try:
+            r = subprocess.run(["gh", "auth", "token"], capture_output=True,
+                               text=True, timeout=15)
+            if r.returncode == 0:
+                return r.stdout.strip()
+        except Exception:
+            pass
+        return ""
+
     def _git_auth_url(self) -> str:
         url = getattr(config, "BACKUP_GIT_REMOTE", "").strip()
-        token = getattr(config, "BACKUP_GIT_TOKEN", "").strip()
+        token = self._resolve_git_token()
         if not url or not token:
             return url
         tail = url.split("//", 1)[-1]
@@ -276,6 +495,9 @@ class BackupManager:
         url = getattr(config, "BACKUP_GIT_REMOTE", "").strip()
         if not url:
             return {"ok": False, "detail": "BACKUP_GIT_REMOTE no configurado"}
+        if not self._resolve_git_token():
+            return {"ok": False,
+                    "detail": "sin token: define BACKUP_GIT_TOKEN o ejecuta 'gh auth login'"}
         branch = getattr(config, "BACKUP_GIT_BRANCH", "main")
         repo = self.track_dir / ".git_push_repo"
         repo.mkdir(parents=True, exist_ok=True)
@@ -370,6 +592,13 @@ class BackupManager:
             self._export_csv(rows)
             ranking = self._export_ranking(rows)
 
+            # 2b) Órdenes live simuladas del Modo Híbrido (ledger append-only + CSV)
+            result["orders_events_added"] = self._append_orders_ledger()
+            result["orders_total"] = self._export_orders_csv()
+
+            # 2c) Diagnóstico de la ejecución híbrida (motivos de rechazo agregados)
+            manifest["hybrid"] = self._hybrid_diagnostics()
+
             # 3) Manifest de integridad (hashes para detectar corrupción)
             manifest["files"] = {
                 p.name: {"bytes": p.stat().st_size, "sha256": _sha256(p)}
@@ -380,6 +609,7 @@ class BackupManager:
                 "total": len(rows),
                 "realistic": sum(1 for r in rows if r["source"] == "realistic"),
                 "research": sum(1 for r in rows if r["source"] == "research"),
+                "hybrid": sum(1 for r in rows if r["source"] == "hybrid"),
             }
             manifest["strategies"] = len(ranking["strategies"])
             try:
@@ -395,7 +625,9 @@ class BackupManager:
             # 4) Lista de archivos a empujar off-site
             files_to_push = [
                 self.track_dir / n
-                for n in ("ledger.jsonl", "trades_all.csv", "strategy_ranking.json", "manifest.json")
+                for n in ("ledger.jsonl", "trades_all.csv", "strategy_ranking.json",
+                          "manifest.json", "hybrid_orders.jsonl", "hybrid_orders.csv",
+                          "CAMPAIGN_REPORT.md")
                 if (self.track_dir / n).exists()
             ]
             for name in self.files:
@@ -408,6 +640,7 @@ class BackupManager:
                 "campaign_day": manifest.get("campaign_day"),
                 "trade_counts": manifest.get("trade_counts"),
                 "strategies": ranking["strategies"],
+                "hybrid_orders": result.get("orders_total", 0),
                 "generated_at": manifest["updated_at"],
             }
 
@@ -432,6 +665,8 @@ class BackupManager:
                 "last_run_at": started.isoformat(),
                 "last_duration_ms": round((utc_now() - started).total_seconds() * 1000, 1),
                 "ledger_events": len(self._load_index()),
+                "orders_events": len(self._load_orders_index()),
+                "orders_logged": result.get("orders_total", 0),
                 "backends": result["backends"],
                 "last_error": None,
                 "campaign_start": manifest.get("campaign_start"),
@@ -450,3 +685,43 @@ class BackupManager:
 
 # Instancia global usada por main.py
 backup_manager = BackupManager()
+
+
+# --------------------------------------------------------------------------- #
+#  Mantenimiento por línea de comandos
+# --------------------------------------------------------------------------- #
+def _main(argv: List[str]) -> int:
+    """Utilidades de mantenimiento del track record.
+
+    Uso:
+        python3 backup_manager.py run                 # fuerza un ciclo completo
+        python3 backup_manager.py rebuild-orders      # compacta el ledger de órdenes
+        python3 backup_manager.py compact-orders      # quita rechazos del ledger (conserva ejecutadas)
+    """
+    cmd = argv[1] if len(argv) > 1 else "run"
+    if cmd == "run":
+        res = backup_manager.run_once()
+        print(json.dumps(res, indent=2, ensure_ascii=False, default=str))
+        return 0
+    if cmd == "compact-orders":
+        res = backup_manager.compact_orders_ledger()
+        path = backup_manager.orders_ledger_path
+        size = path.stat().st_size if path.exists() else 0
+        print(f"Ledger compactado: {res['kept']} ejecutadas conservadas, "
+              f"{res['dropped']} descartadas ({size:,} bytes) en {path}")
+        return 0
+    if cmd == "rebuild-orders":
+        total = backup_manager.rebuild_orders_ledger()
+        path = backup_manager.orders_ledger_path
+        size = path.stat().st_size if path.exists() else 0
+        print(f"Ledger de órdenes reconstruido: {total} eventos ({size:,} bytes) en {path}")
+        if not backup_manager._ledger_includes_rejected():
+            print("Solo órdenes ejecutadas (FILLED/PARTIAL/MAKER_FILLED). "
+                  "Usa HYBRID_ORDERS_LEDGER_ALL=1 para incluir rechazos.")
+        return 0
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(_main(sys.argv))

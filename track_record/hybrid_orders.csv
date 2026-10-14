@@ -1,0 +1,1 @@
+order_id,recorded_at,status,reason,market_id,market_question,strategy_code,token,side,confidence,is_maker,signal_entry_price,requested_size_usd,exec_price,fill_ratio,slippage_bps,book_depth_usd,levels_consumed,fee_usd,rebate_usd
