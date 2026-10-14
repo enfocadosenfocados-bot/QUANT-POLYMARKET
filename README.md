@@ -228,6 +228,79 @@ sudo systemctl status quant-polymarket
 4. **Agregar backtesting** con datos históricos
 5. **Alertas** vía Telegram/Discord
 
+## 🧪 Campaña Demo >15d y Respaldo Off-Site del Track Record
+
+El objetivo es **experimentar en demo (paper) con TODAS las estrategias durante
+más de 15 días** y decidir con datos cuáles pasan a operar en real, sin depender
+de una única VPS: si se cae o se reinicia, el track record no se pierde.
+
+### Qué hace el bot automáticamente
+
+- Ejecuta **todas** las estrategias en dos trackers:
+  - `paper_trades.json` → cuenta realista de $1,000 (solo señales Ultra ≥75%).
+  - `paper_trades_research.json` → **presupuesto aislado por estrategia**, captura
+    todas las señales (≥60%) para poder comparar estrategias entre sí.
+- Cada `BACKUP_INTERVAL_SECONDS` (por defecto 15 min), `backup_manager.py`:
+  1. Añade cada trade nuevo a `track_record/ledger.jsonl` (**append-only**: nunca
+     se reescribe, así un borrado parcial no destruye el histórico).
+  2. Exporta `track_record/trades_all.csv`, `strategy_ranking.json` y
+     `manifest.json` (con hashes SHA-256 para detectar corrupción).
+  3. Empuja la copia a los destinos off-site configurados.
+
+### Configuración off-site
+
+Copia `.env.example` a `.env` y elige el destino (puedes combinar varios):
+
+```
+BACKUP_TARGETS=git,http      # local,git,s3,http (separados por comas)
+```
+
+- **git** (recomendado): crea un repo **privado** vacío y define
+  `BACKUP_GIT_REMOTE` + `BACKUP_GIT_TOKEN` (PAT con permiso de escritura).
+  También puedes reutilizar este mismo repo apuntando a otra rama
+  (`BACKUP_GIT_BRANCH=trackrecord`).
+- **s3**: AWS S3 / Cloudflare R2 / Backblaze B2 / MinIO (requiere `pip install boto3`).
+- **http**: webhook (Google Apps Script, n8n, Make, Supabase...).
+- **local**: copia a otra carpeta (p. ej. disco montado) vía `BACKUP_LOCAL_DIR`.
+
+Un backend caído **nunca** rompe el bot: el fallo se registra y se consulta en
+`GET /api/backup/status`.
+
+### API
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/backup/status` | Estado, día de campaña, ciclos y resultado por backend |
+| `POST /api/backup/run` | Forzar un ciclo de respaldo inmediato |
+| `GET /api/campaign/report` | Ranking por estrategia + manifest de la campaña |
+
+### Reporte y decisión (pasar a real / descartar)
+
+```
+python report_campaign.py                 # usa ./track_record
+python report_campaign.py /ruta/track_record
+```
+
+Genera `track_record/CAMPAIGN_REPORT.md` con el veredicto por estrategia:
+
+- ✅ `CANDIDATA_REAL` — ≥10 cierres, win rate ≥55% y PnL neto > 0.
+- 🟡 `PROMETEDORA` — PnL neto > 0, pero aún sin la muestra/win rate exigidos.
+- ⏳ `MUESTRA_INSUFICIENTE` — menos de 10 trades cerrados.
+- ❌ `DESCARTAR` — PnL neto ≤ 0.
+
+### Operación 24/7 (garantizar los >15 días)
+
+El bot debe sobrevivir a reinicios y caídas. Unidad systemd incluida
+(`quant-polymarket.service`):
+
+```bash
+sudo cp quant-polymarket.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now quant-polymarket
+sudo systemctl status quant-polymarket
+journalctl -u quant-polymarket -f      # ver "[Backup] ciclo #N ..."
+```
+
 ## 📄 Licencia
 
 MIT - Uso bajo tu propio riesgo. El trading conlleva riesgo de pérdida.

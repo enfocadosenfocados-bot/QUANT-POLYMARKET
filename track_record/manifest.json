@@ -1,15 +1,19 @@
 {
   "campaign_start": "2026-10-14T04:34:58.147871+00:00",
   "campaign_name": "demo-15d",
-  "updated_at": "2026-10-14T04:34:58.147871+00:00",
+  "updated_at": "2026-10-14T04:39:52.418112+00:00",
   "files": {
+    "CAMPAIGN_REPORT.md": {
+      "bytes": 1182,
+      "sha256": "e2199cb3fad0303ac2db3c99e7157e973dc2e6c7137106f273fcb75dff031ddf"
+    },
     "ledger.jsonl": {
       "bytes": 112197,
       "sha256": "26b2dbae9db1cb40254e8a5b392fd6f23c9dd96b24d38dd5c1c535718f9f5103"
     },
     "strategy_ranking.json": {
       "bytes": 3500,
-      "sha256": "44356fd0a44d14f68718efc91cfef4a5b280b1ef55bab2ac454dcfe97f65c458"
+      "sha256": "9f19ad471a0e99c5ddabdf1e632f28742819db2eaca91ece27f201b7a6d7ef05"
     },
     "trades_all.csv": {
       "bytes": 58088,
