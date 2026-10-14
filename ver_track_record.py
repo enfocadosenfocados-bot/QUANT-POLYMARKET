@@ -200,7 +200,7 @@ def report_orders(orders: List[Dict[str, Any]], detail: int = 15) -> None:
     print(f"  Slippage medio libro : {avg_slip:.2f} bps")
 
     print()
-    print(f"5) ULTIMAS {min(detail, len(orders))} ORDENES")
+    print(f"ULTIMAS {min(detail, len(orders))} ORDENES (detalle de la seccion 4)")
     print("-" * 78)
     print(f"  {'CUANDO':<20}{'ESTRAT':<7}{'LADO':<5}{'PRECIO':>8}"
           f"{'FILL%':>7}{'SLIP':>7}  ESTADO / ID")
@@ -243,7 +243,7 @@ def report_rejections(track_dir: Path, manifest: Dict[str, Any]) -> None:
 
     print()
     print("=" * 78)
-    print("6) DIAGNOSTICO: POR QUE NO SE EJECUTAN ORDENES")
+    print("5) DIAGNOSTICO: POR QUE NO SE EJECUTAN ORDENES")
     print("=" * 78)
     total = sum(counts.values())
     executed = hybrid.get("orders_executed")
@@ -284,7 +284,7 @@ def main() -> int:
         if executed == 0:
             print("i  Aun no hay ordenes ejecutadas registradas: el Modo Hibrido solo guarda")
             print("   las señales que pasan todos los filtros (las rechazadas se cuentan")
-            print("   aparte, ver seccion 6). Es normal al inicio de la campana.")
+            print("   aparte, ver seccion 5). Es normal al inicio de la campana.")
         else:
             print("i  No hay ledger de ordenes hibridas: activa BACKUP_TARGETS off-site")
             print("   (git/s3) o fuerza 'POST /api/backup/run' antes de apagar la VPS.")

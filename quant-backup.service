@@ -1,0 +1,32 @@
+[Unit]
+Description=QUANT POLYMARKET - ciclo de respaldo del track record (off-site)
+Documentation=file:///home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/README.md
+After=network-online.target
+Wants=network-online.target
+
+# Red de seguridad: empuja el track record aunque el bot estuviera colgado.
+# Si el proceso del bot ya esta haciendo su ciclo, el lock de run_once evita
+# que dos procesos escriban en el mismo repo git a la vez.
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET
+EnvironmentFile=-/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/.env
+# HOME explicito: 'gh auth token' lee ~/.config/gh/hosts.yml
+Environment=HOME=/home/ubuntu
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+ExecStart=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/venv/bin/python backup_manager.py run
+
+TimeoutStartSec=300
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=quantbackup
+
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET

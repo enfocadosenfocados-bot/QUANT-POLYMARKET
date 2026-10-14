@@ -1,0 +1,15 @@
+[Unit]
+Description=QUANT POLYMARKET - respaldo del track record cada 15 min (off-site)
+
+[Timer]
+# Desfasado a proposito de los ciclos internos del bot (cada 900 s desde el
+# arranque) para reducir colisiones; el lock de run_once cubre el resto.
+OnCalendar=*:07,22,37,52
+RandomizedDelaySec=60
+AccuracySec=30s
+# Si la VPS estaba apagada a esa hora, ejecutarlo al arrancar.
+Persistent=true
+Unit=quant-backup.service
+
+[Install]
+WantedBy=timers.target

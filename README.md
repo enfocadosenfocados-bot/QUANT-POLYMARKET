@@ -261,8 +261,11 @@ dependencias); la unidad systemd ya incluye `EnvironmentFile=-.../.env`:
 BACKUP_TARGETS=git,http      # local,git,s3,http (separados por comas)
 ```
 
-- **git** (recomendado): crea un repo **privado** vacío y define
-  `BACKUP_GIT_REMOTE` + `BACKUP_GIT_TOKEN` (PAT con permiso de escritura).
+- **git** (recomendado): crea un repo dedicado (privado o **público** si quieres
+  publicar tu track record) y define `BACKUP_GIT_REMOTE`. No hace falta
+  `BACKUP_GIT_TOKEN`: si está vacío, el token se resuelve en tiempo de ejecución
+  con **`gh auth token`** (o `GITHUB_TOKEN`/`GH_TOKEN`), así no guardas secretos
+  en `.env` y sobrevives a la rotación del PAT.
   También puedes reutilizar este mismo repo apuntando a otra rama
   (`BACKUP_GIT_BRANCH=trackrecord`), **nunca a `main`**: el backend git empuja
   su propio HEAD a esa rama y sobrescribiría el código.
@@ -315,16 +318,20 @@ menos un destino externo:
 
 ```
 BACKUP_ENABLED=1
-BACKUP_TARGETS=git            # o "git,s3" / "s3" / "http"
+BACKUP_TARGETS=git,local      # o "git,s3" / "s3" / "http"
 BACKUP_INTERVAL_SECONDS=900
 
-# Repo PRIVADO dedicado (recomendado). NO reutilices el repo del código:
+# Repo dedicado a DATOS. NO reutilices el repo del código:
 # el backend git hace push de su propio HEAD a BACKUP_GIT_BRANCH.
-BACKUP_GIT_REMOTE=https://github.com/USUARIO/quant-track-record.git
+BACKUP_GIT_REMOTE=https://github.com/USUARIO/quant-polymarket-trackrecord.git
 BACKUP_GIT_BRANCH=main
-BACKUP_GIT_TOKEN=ghp_xxx      # PAT con permiso de escritura
+#BACKUP_GIT_TOKEN=            # vacío = se resuelve con `gh auth token`
 ```
 
+> Si el repo de datos es **público**, cualquiera podrá leer tus mercados,
+> estrategias, PnL simulado y motivos de rechazo. El respaldo **no** contiene
+> credenciales (verificado), pero decide tú si eso se puede publicar.
+>
 > Si prefieres reutilizar tu repo actual, usa **otra rama**
 > (`BACKUP_GIT_BRANCH=trackrecord`), nunca `main`, o sobrescribirás el código.
 >
@@ -336,8 +343,10 @@ Cada 15 min (y **al apagar el bot** de forma ordenada) se empuja el paquete.
 También puedes forzarlo antes de que te retiren la VPS:
 
 ```
-curl -X POST http://localhost:8000/api/backup/run      # o GET /api/backup/status
+curl -X POST http://localhost:8010/api/backup/run      # o GET /api/backup/status
 ```
+> El puerto debe ser el del servicio systemd (`--port 8010`, ver `quant-polymarket.service`).
+> Si arrancas a mano con `python main.py`, es el `8000`.
 
 **Paso 2 — revisarlo sin VPS.** Descarga la carpeta respaldada en tu PC y:
 
@@ -386,6 +395,52 @@ sudo systemctl enable --now quant-polymarket
 sudo systemctl status quant-polymarket
 journalctl -u quant-polymarket -f      # ver "[Backup] ciclo #N ..."
 ```
+
+> La unidad arranca uvicorn en el **puerto 8010** y carga la config con
+> `EnvironmentFile=-.../.env`. Cambia `--port` en el `.service` si lo necesitas
+> (en esta VPS el 8000 ya estaba ocupado por otra aplicación) y recuerda
+> `daemon-reload` + `restart` tras cualquier edición.
+>
+> El **apagado ordenado** (`systemctl stop`) dispara un último ciclo de respaldo:
+> verás `[SHUTDOWN] Backup final OK: {...}` en el journal.
+
+#### Respaldo independiente del bot (por si el bot se cuelga)
+
+El bot ya respalda cada `BACKUP_INTERVAL_SECONDS`, pero si el proceso queda vivo
+y atascado, su ciclo interno puede no ejecutarse. `quant-backup.timer` empuja el
+track record **desde fuera**, con su propio proceso:
+
+```bash
+sudo cp quant-backup.service quant-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now quant-backup.timer
+systemctl list-timers quant-backup.timer      # proxima ejecucion
+sudo systemctl start quant-backup.service     # forzarlo ahora y ver el JSON
+journalctl -u quant-backup.service -n 30      # resultado del ultimo ciclo
+```
+
+- Lanza `python backup_manager.py run` cada 15 min (`OnCalendar=*:07,22,37,52`,
+  desfasado del ciclo interno del bot a propósito).
+- `run_once()` toma un **lock** (`track_record/.backup.lock`): si el bot ya está
+  respaldando en ese instante, el timer se salta el ciclo en vez de corromper el
+  repo git temporal.
+- El resultado del ciclo se registra como JSON en el journal (`git.ok`, `local.ok`).
+
+## ✅ Tests
+
+Batería de verificación (no requiere pytest; usa solo la librería estándar y el venv):
+
+```bash
+bash tests/run_all.sh
+```
+
+| Test | Qué comprueba |
+|------|----------------|
+| `tests/test_dotenv.py` | Carga de `.env` sin dependencias, prioridad del entorno y que el token de push sea resoluble (`gh auth token`) |
+| `tests/test_hybrid.py` | `walk_book`, fills taker/parcial/maker, orden simulada y no-regresión del paper |
+| `tests/test_hybrid_api.py` | `/api/hybrid/status`, `/api/hybrid/orders`, `/api/track-record` y panel del dashboard |
+| `tests/test_persistence.py` | Ledger append-only de órdenes, CSV, idempotencia, `HYBRID_ORDERS_LEDGER_ALL` y `ver_track_record.py` (integridad, ranking, rechazos) |
+| `tests/test_shutdown.py` | Arranque/cierre de la app y respaldo final del shutdown |
 
 ## 🧪 Modo Híbrido (validar sin arriesgar capital)
 
