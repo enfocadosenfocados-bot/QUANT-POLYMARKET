@@ -491,6 +491,18 @@ class BackupManager:
             "-c", f"user.email={getattr(config, 'BACKUP_GIT_EMAIL', 'quant-bot@users.noreply.github.com')}",
         ]
 
+    # git puede devolver un codigo != 0 *despues* de haber actualizado la
+    # referencia remota: si el hijo 'git-remote-https' ya fue recolectado, git
+    # falla al hacer su waitpid ("No child processes") aunque el push SI llego.
+    # Sin este filtro el respaldo se reportaba como caido estando a salvo.
+    _GIT_ECHILD = "waitpid for git-remote-https failed"
+
+    @classmethod
+    def _git_push_effective(cls, output: str, branch: str) -> bool:
+        if cls._GIT_ECHILD not in (output or ""):
+            return False
+        return any("->" in line and branch in line for line in output.splitlines())
+
     def _push_git(self, files: List[Path]) -> Dict[str, Any]:
         url = getattr(config, "BACKUP_GIT_REMOTE", "").strip()
         if not url:
@@ -519,9 +531,16 @@ class BackupManager:
             run([*self._git_ident(), "add", "-A"])
             run([*self._git_ident(), "commit", "-m",
                  f"track-record backup {utc_now().isoformat()}", "--allow-empty"], check=False)
-            r = run(["push", "-u", "origin", f"HEAD:{branch}"])
-            detail = (r.stderr or r.stdout).strip().replace(auth_url, "<remote>")
-            return {"ok": True, "detail": detail[-300:]}
+            r = run(["push", "-u", "origin", f"HEAD:{branch}"], check=False)
+            out = f"{r.stdout or ''}{r.stderr or ''}"
+            detail = out.strip().replace(auth_url, "<remote>")
+            if r.returncode == 0:
+                return {"ok": True, "detail": detail[-300:]}
+            if self._git_push_effective(out, branch):
+                return {"ok": True,
+                        "detail": (f"[aviso: git exit {r.returncode} tras actualizar "
+                                   f"la ref; push efectivo] {detail[-220:]}")}
+            return {"ok": False, "detail": (detail[-300:] or f"git exit {r.returncode}")}
         except subprocess.CalledProcessError as e:
             msg = (e.stderr or str(e)).replace(auth_url, "<remote>")
             return {"ok": False, "detail": msg.strip()[-300:]}
@@ -573,7 +592,33 @@ class BackupManager:
     # ------------------------------------------------------------------ #
     #  Ciclo completo
     # ------------------------------------------------------------------ #
+    def _acquire_cycle_lock(self):
+        """Serializa los ciclos de respaldo (hilo del bot vs. timer de systemd).
+
+        Devuelve el descriptor del lock, ``False`` si ya hay otro ciclo en curso
+        o ``None`` si la plataforma no soporta ``fcntl`` (se sigue sin lock).
+        """
+        try:
+            import fcntl
+        except ImportError:  # pragma: no cover - plataformas sin fcntl
+            return None
+        try:
+            self.track_dir.mkdir(parents=True, exist_ok=True)
+            fh = open(self.track_dir / ".backup.lock", "w")
+        except OSError:
+            return None
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return fh
+        except OSError:
+            fh.close()
+            return False
+
     def run_once(self) -> Dict[str, Any]:
+        lock = self._acquire_cycle_lock()
+        if lock is False:
+            print("[Backup] Ya hay otro ciclo en curso; se omite este.")
+            return {"skipped": True, "reason": "otro ciclo de respaldo en curso"}
         started = utc_now()
         result: Dict[str, Any] = {"ran_at": started.isoformat(), "backends": {}}
         try:
@@ -677,6 +722,12 @@ class BackupManager:
         except Exception as e:
             self.status["last_error"] = str(e)
             print(f"[Backup] Error en ciclo: {e}")
+        finally:
+            if lock is not None:
+                try:
+                    lock.close()
+                except Exception:
+                    pass
         return result
 
     def get_status(self) -> Dict[str, Any]:
