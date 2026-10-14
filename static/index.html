@@ -1606,6 +1606,23 @@
                     </div>
                 </div>
 
+                <!-- Modo Híbrido: órdenes live simuladas contra el libro real -->
+                <div class="card" style="margin-bottom: 25px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <span class="card-title" style="color: #f472b6; font-size: 1.05rem;">🧪 Modo Híbrido — Órdenes Live Simuladas</span>
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                                Todas las estrategias pasan por el mismo motor que el paper, pero el fill se simula contra el libro real
+                                (VWAP por profundidad, fills parciales, fee taker / rebate maker). Valida el edge sin capital en riesgo.
+                            </div>
+                        </div>
+                        <span id="hybrid-enabled-badge" class="badge" style="background: rgba(148,163,184,0.15); color: #94a3b8;">—</span>
+                    </div>
+                    <div id="hybrid-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px;">
+                        <div class="empty-state">Sin datos del Modo Híbrido todavía.</div>
+                    </div>
+                </div>
+
                 <div class="market-category-toolbar">
                     <div>
                         <div class="market-category-title">🎯 Posiciones en Monitoreo en Tiempo Real (Exclusivo 75%+ Ultra)</div>
@@ -2531,6 +2548,9 @@
                 if (data.strategy_performance) {
                     renderStrategyPerformance(data.strategy_performance);
                 }
+                if (data.hybrid_stats) {
+                    renderHybridPanel({ enabled: true, stats: data.hybrid_stats, track_record: data.hybrid_record });
+                }
                 if (data.trading_mode) {
                     applyTradingModeStatus(data.trading_mode);
                 }
@@ -3100,6 +3120,52 @@
             });
         }
 
+        async function fetchHybridStats() {
+            try {
+                const resp = await fetch('/api/hybrid/status');
+                renderHybridPanel(await resp.json());
+            } catch (e) {
+                console.error('Error fetching hybrid status:', e);
+            }
+        }
+
+        function renderHybridPanel(payload) {
+            if (!payload) return;
+
+            const stats = payload.stats || payload.summary || {};
+            const exec = stats.execution_stats || {};
+
+            const badge = document.getElementById('hybrid-enabled-badge');
+            if (badge) {
+                const on = !!payload.enabled;
+                badge.textContent = on ? '● ACTIVO' : '● DESACTIVADO';
+                badge.style.background = on ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.15)';
+                badge.style.color = on ? '#4ade80' : '#94a3b8';
+            }
+
+            const box = document.getElementById('hybrid-stats');
+            if (!box) return;
+
+            const num = (v, d = 0) => (typeof v === 'number' ? v : d);
+            const cells = [
+                ['Trades híbridos', num(stats.total_trades)],
+                ['Abiertos', num(stats.open_trades)],
+                ['Cerrados', num(stats.closed_trades)],
+                ['Fills parciales', num(stats.partial_fills)],
+                ['Slippage libro', `${num(stats.avg_book_slippage_bps).toFixed(2)} bps`],
+                ['Fill ratio medio', `${(num(stats.avg_fill_ratio) * 100).toFixed(1)}%`],
+                ['Órdenes simuladas', num(stats.orders_logged)],
+                ['FILLED / PART / MAKER / REJ',
+                    `${num(exec.filled)} / ${num(exec.partial)} / ${num(exec.maker_filled)} / ${num(exec.rejected)}`],
+            ];
+
+            box.innerHTML = cells.map(([label, value]) => `
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 10px 12px;">
+                    <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">${label}</div>
+                    <div style="font-size: 1.05rem; font-weight: 600; margin-top: 4px;">${value}</div>
+                </div>`).join('');
+        }
+
         async function fetchTrackRecord() {
             try {
                 const resp = await fetch('/api/track-record');
@@ -3538,7 +3604,7 @@
             if (tabName === 'markets') fetchMarkets();
             if (tabName === 'strategies') fetchStrategies();
             if (tabName === 'top-signals') fetchTopSignals();
-            if (tabName === 'track-record') fetchTrackRecord();
+            if (tabName === 'track-record') { fetchTrackRecord(); fetchHybridStats(); }
             if (tabName === 'strategy-performance') fetchStrategyPerformance();
             if (tabName === 'strategy-ranking') fetchStrategyRanking();
             if (tabName === 'lead-lag') fetchLeadLag();
@@ -4344,6 +4410,7 @@
             }
             if (document.getElementById('tab-track-record').classList.contains('active')) {
                 fetchTrackRecord();
+                fetchHybridStats();
             }
             if (document.getElementById('tab-strategy-performance').classList.contains('active')) {
                 fetchStrategyPerformance();
@@ -4677,6 +4744,7 @@
             fetchStrategies();
             fetchTopSignals();
             fetchTrackRecord();
+            fetchHybridStats();
             fetchStrategyPerformance();
             fetchTradingMode();
             fetchLeadLag();

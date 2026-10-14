@@ -53,7 +53,8 @@ def main() -> int:
         f"- Día de campaña: **{day}** (mínimo objetivo: {manifest.get('campaign_min_days', 15)})",
         f"- Campaña completa: {'SÍ' if manifest.get('campaign_complete') else 'NO'}",
         f"- Trades: {counts.get('total', 0)} "
-        f"(realista={counts.get('realistic', 0)}, research={counts.get('research', 0)})",
+        f"(realista={counts.get('realistic', 0)}, research={counts.get('research', 0)}, "
+        f"híbrido={counts.get('hybrid', 0)})",
         f"- Estrategias analizadas: {len(strategies)}",
         "",
         "| # | Estrategia | Trades | Cerrados | Win% | PnL neto $ | Veredicto |",
@@ -67,6 +68,35 @@ def main() -> int:
             f"| {s.get('total', 0)} | {s.get('closed', 0)} | {s.get('win_rate_pct', 0)} "
             f"| {s.get('net_pnl_usd', 0)} | {icon} {v} |"
         )
+
+    hybrid_rows = [
+        s for s in strategies
+        if (s.get("by_source") or {}).get("hybrid", {}).get("total")
+    ]
+    if hybrid_rows:
+        lines += [
+            "",
+            "## Modo Híbrido (órdenes live simuladas contra el libro real)",
+            "",
+            "| Estrategia | Trades | Slippage libro (bps) | Fills parciales | PnL research $ | PnL híbrido $ | Δ ejecución $ |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for s in hybrid_rows:
+            hy = s["by_source"].get("hybrid", {})
+            rs = s["by_source"].get("research", {})
+            delta = round(hy.get("net_pnl_usd", 0.0) - rs.get("net_pnl_usd", 0.0), 2)
+            slip = s.get("avg_book_slippage_bps")
+            lines.append(
+                f"| {s.get('strategy_code')} — {s.get('strategy_name', '')} "
+                f"| {hy.get('total', 0)} "
+                f"| {slip if slip is not None else '—'} "
+                f"| {s.get('partial_fills', 0)} "
+                f"| {rs.get('net_pnl_usd', 0.0)} "
+                f"| {hy.get('net_pnl_usd', 0.0)} "
+                f"| {delta:+} |"
+            )
+        lines.append("")
+        lines.append("Δ ejecución = PnL híbrido − PnL research (mismo pipeline, fill real de libro).")
 
     report = "\n".join(lines)
     print(report)

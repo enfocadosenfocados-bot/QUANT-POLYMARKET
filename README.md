@@ -103,6 +103,8 @@ Si Gamma API no devuelve categoría, QUANT POLYMARKET la infiere automáticament
 | `GET /api/arbitrage` | Oportunidades de bundle arbitrage |
 | `GET /api/stats` | Estadísticas del sistema |
 | `GET /api/strategies` | Diagnóstico por estrategia y razones de filtrado |
+| `GET /api/hybrid/status` | Estado del **Modo Híbrido** (órdenes live simuladas contra el libro real) |
+| `GET /api/hybrid/orders?limit=100` | Últimas órdenes simuladas (fill, slippage de libro, fills parciales) |
 | `WS /ws` | WebSocket para actualizaciones en tiempo real |
 
 ## 🏗️ Arquitectura
@@ -236,10 +238,12 @@ de una única VPS: si se cae o se reinicia, el track record no se pierde.
 
 ### Qué hace el bot automáticamente
 
-- Ejecuta **todas** las estrategias en dos trackers:
+- Ejecuta **todas** las estrategias en tres trackers:
   - `paper_trades.json` → cuenta realista de $1,000 (solo señales Ultra ≥75%).
   - `paper_trades_research.json` → **presupuesto aislado por estrategia**, captura
     todas las señales (≥60%) para poder comparar estrategias entre sí.
+  - `paper_trades_hybrid.json` → **Modo Híbrido**: mismo pipeline, pero cada entrada
+    se ejecuta como una **orden live simulada contra el libro real** (ver más abajo).
 - Cada `BACKUP_INTERVAL_SECONDS` (por defecto 15 min), `backup_manager.py`:
   1. Añade cada trade nuevo a `track_record/ledger.jsonl` (**append-only**: nunca
      se reescribe, así un borrado parcial no destruye el histórico).
@@ -249,7 +253,9 @@ de una única VPS: si se cae o se reinicia, el track record no se pierde.
 
 ### Configuración off-site
 
-Copia `.env.example` a `.env` y elige el destino (puedes combinar varios):
+Copia `.env.example` a `.env` y elige el destino (puedes combinar varios).
+El archivo se carga **automáticamente** al arrancar (lector propio, sin
+dependencias); la unidad systemd ya incluye `EnvironmentFile=-.../.env`:
 
 ```
 BACKUP_TARGETS=git,http      # local,git,s3,http (separados por comas)
@@ -258,7 +264,9 @@ BACKUP_TARGETS=git,http      # local,git,s3,http (separados por comas)
 - **git** (recomendado): crea un repo **privado** vacío y define
   `BACKUP_GIT_REMOTE` + `BACKUP_GIT_TOKEN` (PAT con permiso de escritura).
   También puedes reutilizar este mismo repo apuntando a otra rama
-  (`BACKUP_GIT_BRANCH=trackrecord`).
+  (`BACKUP_GIT_BRANCH=trackrecord`), **nunca a `main`**: el backend git empuja
+  su propio HEAD a esa rama y sobrescribiría el código.
+  Para revisar la copia sin la VPS: `python3 ver_track_record.py /ruta/track_record`.
 - **s3**: AWS S3 / Cloudflare R2 / Backblaze B2 / MinIO (requiere `pip install boto3`).
 - **http**: webhook (Google Apps Script, n8n, Make, Supabase...).
 - **local**: copia a otra carpeta (p. ej. disco montado) vía `BACKUP_LOCAL_DIR`.
@@ -288,6 +296,84 @@ Genera `track_record/CAMPAIGN_REPORT.md` con el veredicto por estrategia:
 - ⏳ `MUESTRA_INSUFICIENTE` — menos de 10 trades cerrados.
 - ❌ `DESCARTAR` — PnL neto ≤ 0.
 
+### 🆘 ¿Y si me quitan la VPS? (recuperar todo lo que hizo el bot)
+
+Todo el histórico se materializa **fuera del proceso**, en `track_record/`:
+
+| Archivo | Para qué sirve |
+|---------|----------------|
+| `ledger.jsonl` | Registro **append-only** de cada trade abierto/cerrado. Nunca se reescribe: sobrevive a reinicios y borrados parciales. |
+| `hybrid_orders.jsonl` | Registro **append-only** de cada orden live simulada **ejecutada** (FILLED/PARTIAL/MAKER_FILLED). |
+| `hybrid_orders.csv` | Las mismas órdenes en CSV/Excel para leerlas a mano. |
+| `trades_all.csv` | Todos los trades de todos los motores, aplanados. |
+| `strategy_ranking.json` | Ranking y veredicto por estrategia, con desglose por origen. |
+| `CAMPAIGN_REPORT.md` | Informe final legible (lo genera `report_campaign.py`). |
+| `manifest.json` | Día de campaña + **SHA-256** de cada archivo para detectar corrupción. |
+
+**Paso 1 — sacarlos de la VPS.** En `.env` (copia de `.env.example`), activa al
+menos un destino externo:
+
+```
+BACKUP_ENABLED=1
+BACKUP_TARGETS=git            # o "git,s3" / "s3" / "http"
+BACKUP_INTERVAL_SECONDS=900
+
+# Repo PRIVADO dedicado (recomendado). NO reutilices el repo del código:
+# el backend git hace push de su propio HEAD a BACKUP_GIT_BRANCH.
+BACKUP_GIT_REMOTE=https://github.com/USUARIO/quant-track-record.git
+BACKUP_GIT_BRANCH=main
+BACKUP_GIT_TOKEN=ghp_xxx      # PAT con permiso de escritura
+```
+
+> Si prefieres reutilizar tu repo actual, usa **otra rama**
+> (`BACKUP_GIT_BRANCH=trackrecord`), nunca `main`, o sobrescribirás el código.
+>
+> Alternativa sin GitHub: `BACKUP_TARGETS=s3` con Cloudflare R2 / Backblaze B2
+> (`pip install boto3`), o `BACKUP_TARGETS=http` con un webhook
+> (Apps Script, n8n, Make, Supabase…).
+
+Cada 15 min (y **al apagar el bot** de forma ordenada) se empuja el paquete.
+También puedes forzarlo antes de que te retiren la VPS:
+
+```
+curl -X POST http://localhost:8000/api/backup/run      # o GET /api/backup/status
+```
+
+**Paso 2 — revisarlo sin VPS.** Descarga la carpeta respaldada en tu PC y:
+
+```
+python3 ver_track_record.py /ruta/descargada/track_record
+```
+
+Verifica los SHA-256 contra el manifest y resume campaña, ranking, órdenes
+simuladas, fill ratio, slippage real y motivos de rechazo. Para el informe de
+decisión final:
+
+```
+python3 report_campaign.py /ruta/descargada/track_record
+```
+
+### Ruido de rechazos (importante)
+
+La mayoría de las señales evaluadas **no** llegan a ejecutarse: se registran
+miles de rechazos por hora (`sin libro real disponible` = en ese instante no
+había order book para ese token). Por eso:
+
+- El historial de órdenes guarda **solo las ejecutadas** (con su precio de libro,
+  `fill_ratio` y slippage real).
+- Los rechazos se conservan como **contadores agregados** en
+  `hybrid_orders.json` → `rejection_reasons` y en `manifest.json` → `hybrid`,
+  así que no se pierde el diagnóstico y el respaldo no se infla.
+- Para auditar cada rechazo: `HYBRID_ORDERS_LEDGER_ALL=1` en `.env` (+ reinicio)
+  guarda también las rechazadas en el ledger.
+- Mantenimiento del ledger (conserva todas las ejecutadas, quita rechazos):
+
+```
+python3 backup_manager.py compact-orders     # compacta el ledger append-only
+python3 backup_manager.py rebuild-orders     # lo reconstruye desde el log actual
+python3 backup_manager.py run                # fuerza un ciclo de respaldo
+```
+
 ### Operación 24/7 (garantizar los >15 días)
 
 El bot debe sobrevivir a reinicios y caídas. Unidad systemd incluida
@@ -300,6 +386,69 @@ sudo systemctl enable --now quant-polymarket
 sudo systemctl status quant-polymarket
 journalctl -u quant-polymarket -f      # ver "[Backup] ciclo #N ..."
 ```
+
+## 🧪 Modo Híbrido (validar sin arriesgar capital)
+
+Un modo intermedio entre *paper* y *live*: **todas las estrategias pasan por el
+mismo motor que el paper** (mismos filtros, Kelly sizing, gobernador, gestión de
+TP/SL/trailing y filtro conformal), pero cada entrada se registra como una
+**orden live simulada** construida igual que la que enviaría el ejecutor real y
+con su fill calculado contra **el libro de órdenes real**.
+
+**Qué diferencia hay con el paper clásico**
+
+| Aspecto | Paper clásico | Modo Híbrido |
+|---------|---------------|--------------|
+| Precio de entrada | `señal + PAPER_SLIPPAGE_BPS` (fijo) | **VWAP real** recorriendo la profundidad |
+| Profundidad | Ignorada | Recorrida nivel a nivel (hasta el precio límite) |
+| Fills parciales | No existen | Sí: `filled_shares`, `fill_ratio` |
+| Fee taker | Estimada por categoría | Igual, pero sobre el VWAP pagado |
+| Rebates maker | Estimados | Calculados sobre el fill real del libro |
+| Capital en riesgo | Ninguno | **Ninguno** (la orden nunca se envía) |
+
+**Cómo se simula el fill** (`hybrid_execution.py`)
+
+1. Se limpia el libro real (`market_registry.order_book`) del token y lado.
+2. Se recorre la profundidad (`walk_book`) acumulando niveles hasta agotar la
+   orden o superar el precio límite de la señal.
+3. Con el VWAP obtenido se calculan slippage, fee taker y rebate maker, y se
+   decide el estado:
+   - `FILLED` — se cubrió todo el tamaño dentro del límite.
+   - `PARTIAL` — se cubrió parcialmente (menos liquidez que tamaño pedido).
+   - `MAKER_FILLED` — la señal es maker: fill al límite, sin fee y con rebate.
+   - `REJECTED` — sin libro disponible, spread excesivo o precio límite fuera de rango.
+   - Los fills por debajo de `HYBRID_MIN_FILL_RATIO` se descartan (si `HYBRID_ALLOW_PARTIAL=0`, cualquier parcial se descarta).
+
+**Trazabilidad**
+
+- `paper_trades_hybrid.json` → posiciones (con `engine: "hybrid"`, `order_id`,
+  `order_status`, `fill_ratio`, `book_avg_price`, `book_slippage_bps`).
+- `hybrid_orders.json` → log de **órdenes live simuladas** (payload de la orden,
+  fill, estado y motivo de rechazo). Acotado a `HYBRID_KEEP_ORDERS`.
+- `track_record/strategy_ranking.json` incluye por estrategia `by_source`
+  (`realistic` / `research` / `hybrid`), `partial_fills` y
+  `avg_book_slippage_bps`, para comparar **mismo pipeline con fill teórico vs.
+  fill real** y ver si el edge sobrevive a los costes de ejecución.
+- `python report_campaign.py` añade una sección con el **Δ de ejecución**
+  (PnL híbrido − PnL research) por estrategia.
+
+**Configuración** (`.env`, ver `.env.example`)
+
+```bash
+HYBRID_ENABLED=1          # 0 desactiva el modo (no se registra nada)
+HYBRID_MIN_FILL_RATIO=0.5 # descarta fills por debajo de este ratio del tamaño
+HYBRID_ALLOW_PARTIAL=1    # 0 = descartar cualquier fill parcial
+#HYBRID_STORAGE_FILE=paper_trades_hybrid.json
+#HYBRID_ORDERS_FILE=hybrid_orders.json
+```
+
+**API**: `GET /api/hybrid/status` (stats + resumen) y
+`GET /api/hybrid/orders?limit=100` (últimas órdenes simuladas). El dashboard los
+muestra en la pestaña *📈 Track Record en Vivo*.
+
+> Ruta recomendada: **paper → híbrido (>15 días) → live**. Si en híbrido el PnL
+> se mantiene positivo y el `avg_book_slippage_bps` es asumible, la estrategia
+> tiene una probabilidad mucho mayor de sobrevivir en real.
 
 ## 📄 Licencia
 
