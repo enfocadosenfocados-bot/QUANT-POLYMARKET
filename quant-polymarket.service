@@ -1,0 +1,42 @@
+[Unit]
+Description=QUANT POLYMARKET - bot demo 24/7 (campaña de estrategias >15d)
+Documentation=file:///home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET
+
+# Variables de entorno para el respaldo off-site del track record.
+# Copia .env.example a .env, rellénalo y descomenta la línea siguiente.
+#EnvironmentFile=-/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+ExecStart=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8010
+
+# 24/7 sin supervisor externo: systemd relanza el proceso si muere o si el
+# servidor sale por un fallo no capturado. Garantiza la campaña de >15 días.
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillMode=mixed
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=quantpolymarket
+
+# Endurecimiento: la app solo escribe en su propio directorio (estado JSON,
+# track_record/, logs).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET
+
+[Install]
+WantedBy=multi-user.target

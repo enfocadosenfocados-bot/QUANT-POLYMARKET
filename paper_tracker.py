@@ -162,8 +162,15 @@ class PaperTradingEngine:
                 with open(self.storage_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     loaded = data.get("trades", {})
-                    # Filtrar exclusivamente las que tengan confianza >= 75% (Ultra)
-                    self.trades = {k: v for k, v in loaded.items() if to_float(v.get("confidence"), 0) >= 75.0}
+                    # Modo Research (per_strategy): conservar TODAS las señales de la
+                    # campaña demo, sea cual sea su confianza. Así una estrategia que
+                    # opera con edge moderado (60-74%) no pierde sus muestras al
+                    # reiniciar el bot durante los >15 días de experimentación.
+                    # Modo Realista (global): sólo señales Ultra (confianza >= 75%).
+                    if self.budget_mode == "per_strategy":
+                        self.trades = dict(loaded)
+                    else:
+                        self.trades = {k: v for k, v in loaded.items() if to_float(v.get("confidence"), 0) >= 75.0}
             except Exception as e:
                 print(f"[PaperTrading] Error cargando historial: {e}")
 

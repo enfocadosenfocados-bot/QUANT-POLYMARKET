@@ -1,4 +1,6 @@
 """Configuración global de QUANT POLYMARKET"""
+import os
+from pathlib import Path
 
 # Endpoints de Polymarket
 GAMMA_API = "https://gamma-api.polymarket.com"
@@ -155,3 +157,51 @@ CATEGORY_KEYWORDS = {
         "covid", "vaccine", "fda", "science", "research", "clinical trial",
     ],
 }
+
+# ========== Campaña Demo >15d + Persistencia Off-Site del Track Record ==========
+# Todo es configurable por variables de entorno (ver backup_manager.py). Sin
+# definir nada, el track record se exporta localmente en ./track_record/ y el bot
+# funciona exactamente igual.
+
+# Directorio donde se materializa la copia exportada (ledger, CSV, ranking).
+TRACK_RECORD_DIR = Path(__file__).resolve().parent / "track_record"
+
+# Archivos cuyo contenido se respalda (relativos a la raíz del proyecto).
+TRACK_RECORD_FILES = [
+    "paper_trades.json",
+    "paper_trades_research.json",
+    "trade_memory.json",
+    "quant_ml_state.json",
+]
+
+# Campaña de experimentación: agrupa los trades de los >15 días en demo.
+CAMPAIGN_NAME = os.getenv("CAMPAIGN_NAME", "demo-15d")
+CAMPAIGN_MIN_DAYS = int(os.getenv("CAMPAIGN_MIN_DAYS", "15"))
+
+# Backups off-site. Lista separada por comas: local,git,s3,http.
+#   BACKUP_TARGETS=git          -> empuja a un repo GitHub/GitLab
+#   BACKUP_TARGETS=git,http     -> repo + webhook
+#   BACKUP_TARGETS=s3           -> AWS S3 / Cloudflare R2 / B2 / MinIO
+BACKUP_ENABLED = os.getenv("BACKUP_ENABLED", "1").lower() not in ("0", "false", "no", "")
+BACKUP_TARGETS = [t.strip() for t in os.getenv("BACKUP_TARGETS", "local").split(",") if t.strip()]
+BACKUP_INTERVAL_SECONDS = int(os.getenv("BACKUP_INTERVAL_SECONDS", "900"))  # cada 15 min
+
+# --- Backend Git (empuja el track record a un repo privado) ---
+BACKUP_GIT_REMOTE = os.getenv("BACKUP_GIT_REMOTE", "")
+BACKUP_GIT_BRANCH = os.getenv("BACKUP_GIT_BRANCH", "main")
+BACKUP_GIT_TOKEN = os.getenv("BACKUP_GIT_TOKEN", "")  # PAT con permiso de escritura
+BACKUP_GIT_USER = os.getenv("BACKUP_GIT_USER", "quant-bot")
+BACKUP_GIT_EMAIL = os.getenv("BACKUP_GIT_EMAIL", "quant-bot@users.noreply.github.com")
+
+# --- Backend S3 / S3-compatible (AWS S3, Cloudflare R2, Backblaze B2, MinIO) ---
+# Requiere: pip install boto3
+BACKUP_S3_BUCKET = os.getenv("BACKUP_S3_BUCKET", "")
+BACKUP_S3_PREFIX = os.getenv("BACKUP_S3_PREFIX", "quant-polymarket")
+BACKUP_S3_ENDPOINT = os.getenv("BACKUP_S3_ENDPOINT", "")  # vacío = AWS
+BACKUP_S3_REGION = os.getenv("BACKUP_S3_REGION", "auto")
+BACKUP_S3_ACCESS_KEY = os.getenv("BACKUP_S3_ACCESS_KEY", "")
+BACKUP_S3_SECRET_KEY = os.getenv("BACKUP_S3_SECRET_KEY", "")
+
+# --- Backend HTTP (webhook: Google Apps Script, n8n, Make, Supabase, ...) ---
+BACKUP_HTTP_URL = os.getenv("BACKUP_HTTP_URL", "")
+BACKUP_HTTP_TOKEN = os.getenv("BACKUP_HTTP_TOKEN", "")

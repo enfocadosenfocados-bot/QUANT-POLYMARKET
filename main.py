@@ -39,6 +39,7 @@ from vpin_microstructure import vpin_manager
 from avellaneda_stoikov import avellaneda_stoikov_engine
 from multi_exchange_feed import multi_exchange_feed
 from polygon_health_checker import polygon_health_checker
+from backup_manager import backup_manager
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -66,6 +67,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(whale_tracking_task()),
         asyncio.create_task(strategy_calculation_task()),
         asyncio.create_task(ws_relay_task()),
+        asyncio.create_task(track_record_backup_task()),
         # Iniciar WebSocket de Polymarket; se suscribirá cuando Gamma cargue tokens.
         asyncio.create_task(pm_client.start_websocket([])),
     ]
@@ -740,6 +742,27 @@ async def strategy_calculation_task():
         await asyncio.sleep(3)
 
 
+async def track_record_backup_task():
+    """Respalda el track-record off-site cada BACKUP_INTERVAL_SECONDS.
+
+    Garantiza que la campaña demo de >15 días sobreviva a reinicios, borrados o
+    caída de la VPS: exporta ledger/CSV/ranking y los empuja a los backends
+    configurados (git / s3 / http / local).
+    """
+    await asyncio.sleep(20)
+    while True:
+        try:
+            if backup_manager.enabled:
+                await asyncio.to_thread(backup_manager.run_once)
+                st = backup_manager.get_status()
+                ok = {k: bool(v.get("ok")) for k, v in st.get("backends", {}).items()}
+                print(f"[Backup] ciclo #{st['cycles']} día {st['campaign_day']} "
+                      f"ledger={st['ledger_events']} backends={ok}")
+        except Exception as e:
+            print(f"[Backup] Error: {e}")
+        await asyncio.sleep(max(60, backup_manager.interval))
+
+
 async def ws_relay_task():
     """Reenviar actualizaciones del WebSocket de Polymarket al dashboard"""
     while True:
@@ -974,6 +997,36 @@ async def reset_track_record():
     """Reiniciar el track record de paper trading."""
     paper_tracker.reset_track_record()
     return {"message": "Track record reiniciado con éxito", "summary": paper_tracker.get_summary()}
+
+
+@app.get("/api/backup/status")
+async def get_backup_status():
+    """Estado del respaldo off-site del track record (campaña demo >15d)."""
+    return backup_manager.get_status()
+
+
+@app.post("/api/backup/run")
+async def run_backup_now():
+    """Forzar un ciclo de respaldo inmediato (útil antes de reiniciar la VPS)."""
+    result = await asyncio.to_thread(backup_manager.run_once)
+    return {"result": result, "status": backup_manager.get_status()}
+
+
+@app.get("/api/campaign/report")
+async def get_campaign_report():
+    """Ranking por estrategia de la campaña demo, con veredicto para pasar a real."""
+    ranking_path = backup_manager.track_dir / "strategy_ranking.json"
+    manifest_path = backup_manager.track_dir / "manifest.json"
+    ranking = {}
+    manifest = {}
+    try:
+        if ranking_path.exists():
+            ranking = json.loads(ranking_path.read_text(encoding="utf-8"))
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"error": str(e)}
+    return {"manifest": manifest, "ranking": ranking}
 
 
 @app.get("/api/settings/trading-mode")

@@ -3,3 +3,8 @@ uvicorn>=0.34.0,<1.0
 websockets>=14.0,<16.0
 httpx>=0.28.0,<1.0
 pydantic>=2.10.0,<3.0
+
+# Opcional: necesario solo si BACKUP_TARGETS incluye "s3" (AWS S3 / R2 / B2 / MinIO).
+# Descomenta si usas el backend S3:
+# boto3>=1.34.0,<2.0
+
