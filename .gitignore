@@ -17,6 +17,7 @@ ENV/
 # Local config / secrets
 .env
 .env.*
+!.env.example
 clob_credentials.json
 *.pem
 *.key
@@ -28,6 +29,14 @@ clob_credentials.json
 *.pid
 server-live.*
 server-fixed-*.log
+
+# Track record: escrituras parciales y repositorio temporal del push git.
+# (El repo anidado romperia 'git add -A' con un gitlink invalido)
+*.tmp
+*.json.tmp
+track_record/.git_push_repo
+track_record/.git_push_repo/
+track_record/.orders_ledger_index.json
 
 # IDE / OS
 .vscode/

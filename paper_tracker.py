@@ -8,6 +8,21 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+
+def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
+    """Escribe JSON de forma atómica (tmp + rename).
+
+    Evita que un corte de luz/VPS a mitad de escritura deje el archivo de
+    estado truncado e ilegible: hasta que el rename no ocurre, el archivo
+    anterior sigue íntegro.
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
 try:
     from config import (
         PAPER_MAX_EXPOSURE_USD,
@@ -25,6 +40,9 @@ try:
         PAPER_EXCLUDED_STRATEGIES,
         PAPER_GAS_COST_USD,
         PAPER_IMPACT_BPS_PER_1K,
+        HYBRID_STORAGE_FILE,
+        HYBRID_ORDERS_FILE,
+        HYBRID_KEEP_ORDERS,
     )
 except ImportError:
     PAPER_MAX_EXPOSURE_USD = 1000.0
@@ -39,6 +57,9 @@ except ImportError:
     PAPER_EXCLUDED_STRATEGIES = ["S20", "S24", "S22"]
     PAPER_GAS_COST_USD = 0.05
     PAPER_IMPACT_BPS_PER_1K = 5
+    HYBRID_STORAGE_FILE = "paper_trades_hybrid.json"
+    HYBRID_ORDERS_FILE = "hybrid_orders.json"
+    HYBRID_KEEP_ORDERS = 2000
 
 
 def utc_now() -> datetime:
@@ -176,13 +197,69 @@ class PaperTradingEngine:
 
     def save_to_disk(self):
         try:
-            with open(self.storage_path, "w", encoding="utf-8") as f:
-                json.dump({"trades": self.trades, "updated_at": utc_now().isoformat()}, f, indent=2)
+            _atomic_write_json(
+                self.storage_path,
+                {"trades": self.trades, "updated_at": utc_now().isoformat()},
+            )
         except Exception as e:
             print(f"[PaperTrading] Error guardando historial: {e}")
 
+    def _compute_execution(
+        self,
+        signal: Dict[str, Any],
+        market: Any,
+        trade_size_usd: float,
+        entry_price: float,
+        side: str,
+        total_open_exposure: float,
+    ) -> Dict[str, Any]:
+        """Modelo de fill y costes del paper clásico (slippage fijo + fee por categoría).
+
+        El motor híbrido (HybridTradingEngine) sobreescribe este método para
+        simular la orden contra el libro real en lugar de estimar el precio con
+        un slippage fijo, manteniendo idéntico el resto del pipeline.
+        """
+        if signal.get("is_maker"):
+            # Maker: no cruza el spread, sin slippage
+            total_slippage_bps = 0.0
+            exec_price = max(0.01, min(0.99, entry_price))
+        else:
+            impact_bps = PAPER_IMPACT_BPS_PER_1K * (trade_size_usd / 1000.0)
+            total_slippage_bps = PAPER_SLIPPAGE_BPS + impact_bps
+            slippage = total_slippage_bps / 10000.0
+            exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
+            exec_price = max(0.01, min(0.99, exec_price))
+
+        _cat = str(signal.get("market_category") or getattr(market, "category", "") or "other").lower()
+        fee_rate = POLYMARKET_FEE_RATE.get(_cat, POLYMARKET_DEFAULT_FEE_RATE)
+        if signal.get("is_maker"):
+            # Maker: no paga fee taker; gana rebate (positivo)
+            rebate_rate = POLYMARKET_MAKER_REBATE_RATE.get(_cat, POLYMARKET_DEFAULT_MAKER_REBATE)
+            fee_usd = 0.0
+            rebate_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price) * rebate_rate, 4)
+            effective_size_usd = trade_size_usd + rebate_usd
+        else:
+            fee_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price), 4)
+            rebate_usd = 0.0
+            effective_size_usd = max(0.0, trade_size_usd - fee_usd)
+
+        exit_fee = trade_size_usd * fee_rate * (1.0 - exec_price)
+        return {
+            "skip": False,
+            "slippage_bps": total_slippage_bps,
+            "exec_price": exec_price,
+            "fee_usd": fee_usd,
+            "rebate_usd": rebate_usd,
+            "effective_size_usd": effective_size_usd,
+            "fee_rate": fee_rate,
+            "exit_cost_usd": round(exit_fee + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4),
+            "capital_exposure_usd": round(total_open_exposure + trade_size_usd, 2),
+            "trade_fields": {},
+        }
+
     def evaluate_and_record_signal(self, signal: Dict[str, Any], market: Any) -> Optional[Dict[str, Any]]:
         """Evalúa si una señal califica como 'Top Sniper' y la registra en el track record con Kelly Sizing."""
+
         confidence = to_float(signal.get("confidence"), 0.0)
         entry_price = to_float(signal.get("entry_price"), 0.0)
         target_price = to_float(signal.get("target_price"), 0.0)
@@ -386,41 +463,30 @@ class PaperTradingEngine:
                 trade_size_usd = round(available, 2)
                 signal["position_size_usd"] = trade_size_usd
 
-        # ===== Costes realistas de ejecución =====
-        if signal.get("is_maker"):
-            # Maker: no cruza el spread, sin slippage
-            total_slippage_bps = 0.0
-            exec_price = max(0.01, min(0.99, entry_price))
-        else:
-            impact_bps = PAPER_IMPACT_BPS_PER_1K * (trade_size_usd / 1000.0)
-            total_slippage_bps = PAPER_SLIPPAGE_BPS + impact_bps
-            slippage = total_slippage_bps / 10000.0
-            exec_price = entry_price * (1.0 + slippage) if side == "BUY" else entry_price * (1.0 - slippage)
-            exec_price = max(0.01, min(0.99, exec_price))
+        # ===== Costes de ejecución (modelo según el motor: paper o híbrido) =====
+        exec_result = self._compute_execution(
+            signal, market, trade_size_usd, entry_price, side, total_open_exposure
+        )
+        if exec_result.get("skip"):
+            signal["execution_skipped"] = exec_result.get("reason", "execution_rejected")
+            return None
 
-        _cat = str(signal.get("market_category") or getattr(market, "category", "") or "other").lower()
-        fee_rate = POLYMARKET_FEE_RATE.get(_cat, POLYMARKET_DEFAULT_FEE_RATE)
-        if signal.get("is_maker"):
-            # Maker: no paga fee taker; gana rebate (positivo)
-            rebate_rate = POLYMARKET_MAKER_REBATE_RATE.get(_cat, POLYMARKET_DEFAULT_MAKER_REBATE)
-            fee_usd = 0.0
-            rebate_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price) * rebate_rate, 4)
-            effective_size_usd = trade_size_usd + rebate_usd
-        else:
-            fee_usd = round(trade_size_usd * fee_rate * (1.0 - exec_price), 4)
-            rebate_usd = 0.0
-            effective_size_usd = max(0.0, trade_size_usd - fee_usd)
+        total_slippage_bps = exec_result["slippage_bps"]
+        exec_price = exec_result["exec_price"]
+        fee_usd = exec_result["fee_usd"]
+        rebate_usd = exec_result["rebate_usd"]
+        effective_size_usd = exec_result["effective_size_usd"]
+        fee_rate = exec_result["fee_rate"]
 
-        shares = round(effective_size_usd / exec_price, 2)
+        shares = round(effective_size_usd / exec_price, 2) if exec_price > 0 else 0.0
         signal["execution_price"] = round(exec_price, 4)
         signal["slippage_bps"] = round(total_slippage_bps, 2)
         signal["fee_usd"] = fee_usd
         signal["rebate_usd"] = rebate_usd
         signal["fee_rate"] = fee_rate
         signal["is_maker"] = bool(signal.get("is_maker"))
-        exit_fee = trade_size_usd * fee_rate * (1.0 - exec_price)
-        signal["exit_cost_usd"] = round(exit_fee + trade_size_usd * PAPER_SLIPPAGE_BPS / 10000.0, 4)
-        signal["capital_exposure_usd"] = round(total_open_exposure + trade_size_usd, 2)
+        signal["exit_cost_usd"] = exec_result["exit_cost_usd"]
+        signal["capital_exposure_usd"] = exec_result["capital_exposure_usd"]
 
         new_trade = {
             "trade_id": trade_key,
@@ -466,7 +532,11 @@ class PaperTradingEngine:
             "realized_pnl_pct": 0.0,
             "close_reason": None,
             "closed_at": None,
+            "engine": "paper",
         }
+
+        # Campo específico del motor (el híbrido añade aquí su orden simulada).
+        new_trade.update(exec_result.get("trade_fields") or {})
 
         self.trades[trade_key] = new_trade
         self.save_to_disk()
@@ -1026,3 +1096,210 @@ paper_tracker_research = PaperTradingEngine(
     budget_per_strategy=PAPER_RESEARCH_BUDGET_PER_STRATEGY,
     max_open_per_strategy=PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
 )
+
+
+class HybridTradingEngine(PaperTradingEngine):
+    """Motor del Modo Híbrido: mismo pipeline que paper + orden "live" simulada.
+
+    Reutiliza íntegramente los filtros de entrada, el Kelly sizing, el gobernador
+    de estrategias, el filtro conformal y la gestión de TP/SL/trailing del motor
+    paper. La única diferencia es la ejecución: en vez de estimar el precio con un
+    slippage fijo (PAPER_SLIPPAGE_BPS), se construye la MISMA orden que enviaría el
+    ejecutor real y se simula su fill recorriendo la profundidad real del libro.
+
+    Además de las posiciones, mantiene un log de "órdenes live simuladas"
+    (FILLED / PARTIAL / MAKER_FILLED / rechazadas) para auditar cada decisión.
+    """
+
+    def __init__(
+        self,
+        storage_path: Optional[Path] = None,
+        orders_path: Optional[Path] = None,
+        budget_mode: str = "per_strategy",
+        budget_per_strategy: float = 2000.0,
+        max_open_per_strategy: int = 25,
+    ):
+        base_dir = Path(__file__).resolve().parent
+        super().__init__(
+            storage_path=storage_path or (base_dir / HYBRID_STORAGE_FILE),
+            budget_mode=budget_mode,
+            budget_per_strategy=budget_per_strategy,
+            max_open_per_strategy=max_open_per_strategy,
+        )
+        self.orders_path = orders_path or (base_dir / HYBRID_ORDERS_FILE)
+        self.orders: List[Dict[str, Any]] = []
+        # Contadores de motivos de rechazo: se guardan como dict pequeño en vez
+        # de miles de entradas (los rechazos masivos desplazarían del historial
+        # a las órdenes realmente ejecutadas).
+        self.rejection_reasons: Dict[str, int] = {}
+        self.execution_stats: Dict[str, int] = {
+            "filled": 0,
+            "partial": 0,
+            "maker_filled": 0,
+            "rejected": 0,
+        }
+        self._load_orders()
+
+    # ---------- Persistencia del log de órdenes simuladas ----------
+    def _load_orders(self):
+        if self.orders_path.exists():
+            try:
+                with open(self.orders_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.orders = data.get("orders", []) if isinstance(data, dict) else list(data or [])
+                if isinstance(data, dict) and isinstance(data.get("rejection_reasons"), dict):
+                    self.rejection_reasons = {
+                        str(k): int(v) for k, v in data["rejection_reasons"].items()
+                    }
+            except Exception as e:
+                print(f"[Hybrid] Error cargando órdenes simuladas: {e}")
+                self.orders = []
+
+        # Migración: versiones anteriores guardaban también los rechazos en el
+        # log (miles por hora). Se descartan al cargar; su recuento agregado se
+        # mantiene en rejection_reasons.
+        legacy = [o for o in self.orders if str(o.get("status", "")).upper() == "REJECTED"]
+        if legacy:
+            for o in legacy:
+                reason = o.get("reason") or "sin motivo"
+                self.rejection_reasons[reason] = self.rejection_reasons.get(reason, 0) + 1
+            self.orders = [o for o in self.orders if str(o.get("status", "")).upper() != "REJECTED"]
+            self.execution_stats["rejected"] = self.execution_stats.get("rejected", 0) + len(legacy)
+            print(f"[Hybrid] Log depurado: {len(legacy)} rechazos movidos a contadores "
+                  f"(quedan {len(self.orders)} órdenes ejecutadas)")
+
+        for order in self.orders:
+            status = str(order.get("status", "")).upper()
+            key = {"FILLED": "filled", "PARTIAL": "partial", "MAKER_FILLED": "maker_filled"}.get(status, "rejected")
+            self.execution_stats[key] = self.execution_stats.get(key, 0) + 1
+
+    def _save_orders(self):
+        try:
+            self.orders = self.orders[-HYBRID_KEEP_ORDERS:]
+            _atomic_write_json(
+                self.orders_path,
+                {
+                    "orders": self.orders,
+                    "rejection_reasons": self.rejection_reasons,
+                    "engine": "hybrid",
+                    "updated_at": utc_now().isoformat(),
+                },
+            )
+        except Exception as e:
+            print(f"[Hybrid] Error guardando órdenes simuladas: {e}")
+
+    # ---------- Registro de cada orden "live" simulada ----------
+    def _record_order(
+        self,
+        signal: Dict[str, Any],
+        market: Any,
+        exec_result: Dict[str, Any],
+        trade_size_usd: float,
+    ) -> None:
+        fields = exec_result.get("trade_fields") or {}
+        status = exec_result.get("status") or ("REJECTED" if exec_result.get("skip") else "UNKNOWN")
+        entry = {
+            "order_id": fields.get("order_id") or f"SIM-{int(utc_now().timestamp() * 1000)}",
+            "recorded_at": utc_now().isoformat(),
+            "status": status,
+            "reason": exec_result.get("reason"),
+            "market_id": getattr(market, "market_id", ""),
+            "market_question": getattr(market, "question", ""),
+            "strategy_code": signal.get("strategy_code", "GEN"),
+            "token": signal.get("token", "Yes"),
+            "side": str(signal.get("side") or "BUY").upper(),
+            "confidence": to_float(signal.get("confidence"), 0.0),
+            "is_maker": bool(signal.get("is_maker")),
+            "signal_entry_price": to_float(signal.get("entry_price"), 0.0),
+            "requested_size_usd": round(trade_size_usd, 2),
+            "order_payload": fields.get("order_payload"),
+            "fill": {
+                "exec_price": exec_result.get("exec_price"),
+                "fill_ratio": fields.get("fill_ratio"),
+                "slippage_bps": exec_result.get("slippage_bps"),
+                "book_depth_usd": fields.get("book_depth_usd"),
+                "levels_consumed": fields.get("book_levels_consumed"),
+                "fee_usd": exec_result.get("fee_usd"),
+                "rebate_usd": exec_result.get("rebate_usd"),
+            },
+        }
+        if status == "REJECTED":
+            # No se guarda la entrada: a ~7.000 rechazos/hora desplazaría del
+            # historial (cap HYBRID_KEEP_ORDERS) a las órdenes ejecutadas antes
+            # de que el respaldo off-site las recoja. Solo se cuentan.
+            reason = entry.get("reason") or "sin motivo"
+            self.rejection_reasons[reason] = self.rejection_reasons.get(reason, 0) + 1
+        else:
+            self.orders.append(entry)
+        key = {"FILLED": "filled", "PARTIAL": "partial", "MAKER_FILLED": "maker_filled"}.get(status, "rejected")
+        self.execution_stats[key] = self.execution_stats.get(key, 0) + 1
+        self._save_orders()
+
+    # ---------- Ejecución: aquí está la única diferencia con el paper ----------
+    def _compute_execution(
+        self,
+        signal: Dict[str, Any],
+        market: Any,
+        trade_size_usd: float,
+        entry_price: float,
+        side: str,
+        total_open_exposure: float,
+    ) -> Dict[str, Any]:
+        """Simula la orden contra el libro real; si falla, degrada a paper."""
+        try:
+            from hybrid_execution import simulated_live_executor
+
+            result = simulated_live_executor.execution(
+                signal, market, trade_size_usd, total_open_exposure
+            )
+        except Exception as e:
+            print(f"[Hybrid] Fallback a modelo paper por error de simulación: {e}")
+            return super()._compute_execution(
+                signal, market, trade_size_usd, entry_price, side, total_open_exposure
+            )
+
+        self._record_order(signal, market, result, trade_size_usd)
+        return result
+
+    def save_to_disk(self):
+        try:
+            _atomic_write_json(
+                self.storage_path,
+                {"trades": self.trades, "engine": "hybrid", "updated_at": utc_now().isoformat()},
+            )
+        except Exception as e:
+            print(f"[Hybrid] Error guardando historial: {e}")
+
+    def get_hybrid_stats(self) -> Dict[str, Any]:
+        """Resumen de ejecución del modo híbrido (fills, slippage real, parciales)."""
+        trades = list(self.trades.values())
+        open_trades = [t for t in trades if t.get("status") == "OPEN"]
+        closed = [t for t in trades if t.get("status") in ("WON", "LOST")]
+        partials = sum(1 for t in trades if t.get("is_partial_fill"))
+        slips = [to_float(t.get("book_slippage_bps"), 0.0) for t in trades if t.get("book_slippage_bps") is not None]
+        ratios = [to_float(t.get("fill_ratio"), 0.0) for t in trades if t.get("fill_ratio") is not None]
+        return {
+            "engine": "hybrid",
+            "description": "Órdenes live simuladas contra el libro real (sin capital)",
+            "total_trades": len(trades),
+            "open_trades": len(open_trades),
+            "closed_trades": len(closed),
+            "partial_fills": partials,
+            "avg_book_slippage_bps": round(sum(slips) / len(slips), 2) if slips else 0.0,
+            "avg_fill_ratio": round(sum(ratios) / len(ratios), 4) if ratios else 0.0,
+            "execution_stats": dict(self.execution_stats),
+            "rejection_reasons": dict(self.rejection_reasons),
+            "orders_logged": len(self.orders),
+            "storage_file": self.storage_path.name,
+            "updated_at": utc_now().isoformat(),
+        }
+
+
+# Instancia del Modo Híbrido: TODAS las estrategias con órdenes live simuladas
+# contra el libro real, reutilizando el mismo pipeline que el Modo Research.
+hybrid_tracker = HybridTradingEngine(
+    budget_mode="per_strategy",
+    budget_per_strategy=PAPER_RESEARCH_BUDGET_PER_STRATEGY,
+    max_open_per_strategy=PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY,
+)
+

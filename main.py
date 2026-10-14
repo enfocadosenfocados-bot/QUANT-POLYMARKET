@@ -15,10 +15,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 from config import (
+    BACKUP_ENABLED,
     CATEGORY_KEYWORDS,
     CATEGORIES,
     GAMMA_POLL_INTERVAL,
     CLOB_POLL_INTERVAL,
+    HYBRID_ENABLED,
     MIN_LIQUIDITY,
     MIN_VOLUME_24H,
     STRATEGY_PARAMS,
@@ -26,7 +28,7 @@ from config import (
 from market_registry import registry
 from polymarket_client import pm_client
 from strategies import engine
-from paper_tracker import paper_tracker, paper_tracker_research
+from paper_tracker import paper_tracker, paper_tracker_research, hybrid_tracker
 from live_execution import live_manager
 from lead_lag_engine import lead_lag_engine
 from ai_learning_engine import ai_learning_engine
@@ -89,6 +91,18 @@ async def lifespan(app: FastAPI):
             with suppress(asyncio.CancelledError):
                 await task
         background_tasks.clear()
+
+        # Backup final: si la VPS se apaga/reinicia, el track record ya está
+        # empujado off-site (ledger + órdenes simuladas + ranking + manifest).
+        if BACKUP_ENABLED:
+            try:
+                print("[SHUTDOWN] Backup final del track record...")
+                res = await asyncio.wait_for(
+                    asyncio.to_thread(backup_manager.run_once), timeout=180
+                )
+                print(f"[SHUTDOWN] Backup final OK: {res.get('backends')}")
+            except Exception as e:
+                print(f"[SHUTDOWN] Backup final fallo (no crítico): {e}")
 
 
 app = FastAPI(title="QUANT POLYMARKET", version="1.0.0", lifespan=lifespan)
@@ -706,6 +720,10 @@ async def strategy_calculation_task():
                     # Evaluar si la señal es Top Sniper y registrar en Paper Tracker
                     paper_tracker.evaluate_and_record_signal(sig, m)
                     paper_tracker_research.evaluate_and_record_signal(sig, m)
+                    # Modo Híbrido: misma señal, ejecutada como orden "live" simulada
+                    # contra el libro real (valida el edge sin arriesgar capital).
+                    if HYBRID_ENABLED:
+                        hybrid_tracker.evaluate_and_record_signal(sig, m)
                     # Evitar duplicados recientes
                     sig_key = sig.get("dedupe_key") or f"{sig.get('strategy_code')}:{sig.get('token')}:{sig.get('side')}"
                     existing = [
@@ -720,6 +738,8 @@ async def strategy_calculation_task():
             # Actualizar precios en vivo para las posiciones abiertas de Paper Trading
             paper_tracker.update_live_prices(registry)
             paper_tracker_research.update_live_prices(registry)
+            if HYBRID_ENABLED:
+                hybrid_tracker.update_live_prices(registry)
             registry.system_stats["strategy_diagnostics"] = build_strategy_diagnostics()
 
             # Broadcast a todos los clientes del dashboard
@@ -730,6 +750,8 @@ async def strategy_calculation_task():
                 "active_signals": len(registry.get_active_signals()),
                 "track_record": paper_tracker.get_summary(),
                 "strategy_performance": paper_tracker.get_strategy_performance(),
+                "hybrid_record": hybrid_tracker.get_summary(),
+                "hybrid_stats": hybrid_tracker.get_hybrid_stats(),
                 "trading_mode": live_manager.get_public_status(),
                 "lead_lag": lead_lag_engine.get_status(),
                 "ai_agent": ai_learning_engine.get_status(),
@@ -1027,6 +1049,24 @@ async def get_campaign_report():
     except Exception as e:
         return {"error": str(e)}
     return {"manifest": manifest, "ranking": ranking}
+
+
+@app.get("/api/hybrid/status")
+async def get_hybrid_status():
+    """Estado del Modo Híbrido: órdenes 'live' simuladas contra el libro real."""
+    return {
+        "enabled": HYBRID_ENABLED,
+        "stats": hybrid_tracker.get_hybrid_stats(),
+        "track_record": hybrid_tracker.get_summary(),
+        "summary": hybrid_tracker.get_hybrid_stats(),
+    }
+
+
+@app.get("/api/hybrid/orders")
+async def get_hybrid_orders(limit: int = Query(100, ge=1, le=1000)):
+    """Últimas órdenes 'live' simuladas registradas por el Modo Híbrido."""
+    orders = list(reversed(hybrid_tracker.orders[-limit:]))
+    return {"count": len(orders), "orders": orders}
 
 
 @app.get("/api/settings/trading-mode")

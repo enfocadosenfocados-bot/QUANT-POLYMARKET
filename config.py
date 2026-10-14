@@ -2,6 +2,31 @@
 import os
 from pathlib import Path
 
+
+def _load_dotenv(path: Path) -> None:
+    """Carga ``.env`` sin dependencias externas.
+
+    Las variables ya presentes en el entorno real (systemd, shell, Docker)
+    tienen prioridad: el archivo solo rellena lo que falte.
+    """
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except FileNotFoundError:
+        pass
+    except Exception as e:  # un .env roto jamás debe impedir arrancar el bot
+        print(f"[Config] Aviso: no se pudo leer .env ({e})")
+
+
+_load_dotenv(Path(__file__).resolve().parent / ".env")
+
 # Endpoints de Polymarket
 GAMMA_API = "https://gamma-api.polymarket.com"
 CLOB_API = "https://clob.polymarket.com"
@@ -54,6 +79,21 @@ PAPER_RESEARCH_MAX_OPEN_PER_STRATEGY = 25    # Plazas por estrategia (Modo Resea
 PAPER_MAX_HORIZON_HOURS = 720.0      # Horizonte máximo: 30 días (flash + corto + medio)
 PAPER_MAX_ENTRY_PRICE = 0.97         # Red de seguridad: no comprar por encima de este precio
 PAPER_EXCLUDED_STRATEGIES = ["S20", "S24", "S22"]  # Perdedoras estructurales (excluidas del modo Realista)
+
+# ========== Modo Híbrido: órdenes "live" simuladas contra el libro real ==========
+# Todas las estrategias pasan por el MISMO motor que paper, pero el fill se
+# calcula recorriendo el libro real (profundidad, spread y fills parciales) en
+# lugar de estimar el precio con un slippage fijo. Permite validar el edge real
+# de cada estrategia sin arriesgar capital ni claves de CLOB.
+HYBRID_ENABLED = os.getenv("HYBRID_ENABLED", "1").lower() not in ("0", "false", "no", "")
+HYBRID_BUDGET_MODE = os.getenv("HYBRID_BUDGET_MODE", "per_strategy")  # igual que paper research
+HYBRID_STORAGE_FILE = os.getenv("HYBRID_STORAGE_FILE", "paper_trades_hybrid.json")
+HYBRID_ORDERS_FILE = os.getenv("HYBRID_ORDERS_FILE", "hybrid_orders.json")
+HYBRID_MIN_FILL_RATIO = float(os.getenv("HYBRID_MIN_FILL_RATIO", "0.5"))   # fill mínimo aceptable
+HYBRID_ALLOW_PARTIAL = os.getenv("HYBRID_ALLOW_PARTIAL", "1").lower() not in ("0", "false", "no", "")
+HYBRID_KEEP_ORDERS = int(os.getenv("HYBRID_KEEP_ORDERS", "2000"))          # órdenes simuladas a conservar
+HYBRID_BUDGET_PER_STRATEGY = float(os.getenv("HYBRID_BUDGET_PER_STRATEGY", "2000"))
+HYBRID_MAX_OPEN_PER_STRATEGY = int(os.getenv("HYBRID_MAX_OPEN_PER_STRATEGY", "25"))
 
 # Parámetros de estrategias
 STRATEGY_PARAMS = {
@@ -170,6 +210,8 @@ TRACK_RECORD_DIR = Path(__file__).resolve().parent / "track_record"
 TRACK_RECORD_FILES = [
     "paper_trades.json",
     "paper_trades_research.json",
+    "paper_trades_hybrid.json",
+    "hybrid_orders.json",
     "trade_memory.json",
     "quant_ml_state.json",
 ]

@@ -11,8 +11,8 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET
 
 # Variables de entorno para el respaldo off-site del track record.
-# Copia .env.example a .env, rellénalo y descomenta la línea siguiente.
-#EnvironmentFile=-/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/.env
+# Copia .env.example a .env, rellénalo (repo privado + PAT) y queda activo.
+EnvironmentFile=-/home/ubuntu/.cline/data/workspaces/chat/QUANT-POLYMARKET/.env
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 
